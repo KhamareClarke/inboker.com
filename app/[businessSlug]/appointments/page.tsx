@@ -547,7 +547,7 @@ export default function BusinessAppointmentsPage() {
                                   Confirm Appointment
                                 </DropdownMenuItem>
                               )}
-                              {appointment.status !== 'completed' && (
+                              {(appointment.status === 'pending' || appointment.status === 'confirmed') && (
                                 <DropdownMenuItem
                                   onClick={() => {
                                     if (isPast || confirm('Mark this upcoming appointment as completed?')) {
