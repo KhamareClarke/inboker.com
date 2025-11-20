@@ -174,7 +174,7 @@ export default function CalendarPage() {
       );
 
       const result = await Promise.race([
-        query.then(r => ({ type: 'success', data: r.data, error: r.error })),
+        query.then((r: any) => ({ type: 'success', data: r.data, error: r.error })),
         timeoutPromise.then(() => ({ type: 'timeout' }))
       ]) as any;
 
@@ -386,11 +386,11 @@ export default function CalendarPage() {
                   const aptDate = parseISO(apt.start_time);
                   return aptDate >= new Date() && apt.status !== 'cancelled';
                 }).length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">
+                <p className="text-sm text-muted-foreground text-center py-4">
                     No upcoming appointments
-                  </p>
-                ) : (
-                  <div className="space-y-2">
+                </p>
+              ) : (
+                <div className="space-y-2">
                     {appointments
                       .filter(apt => {
                         const aptDate = parseISO(apt.start_time);
@@ -406,13 +406,13 @@ export default function CalendarPage() {
                           <p className="font-medium text-xs">
                             {appointment.business_profile_services?.name || 'Service'}
                           </p>
-                          <p className="text-xs text-muted-foreground mt-1">
+                      <p className="text-xs text-muted-foreground mt-1">
                             {format(parseISO(appointment.start_time), 'MMM d, h:mm a')}
-                          </p>
-                        </div>
-                      ))}
-                  </div>
-                )}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
               </CardContent>
             </Card>
           </div>
