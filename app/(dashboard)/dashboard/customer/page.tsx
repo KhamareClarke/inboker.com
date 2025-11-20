@@ -246,7 +246,7 @@ export default function CustomerDashboardPage() {
       console.log('Services data:', servicesData);
 
       // Now load business profiles for each service
-      const businessProfileIds = [...new Set(servicesData.map((s: any) => s.business_profile_id))];
+      const businessProfileIds = Array.from(new Set(servicesData.map((s: any) => s.business_profile_id)));
       
       if (businessProfileIds.length === 0) {
         setServices([]);
