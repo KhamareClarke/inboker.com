@@ -545,7 +545,7 @@ export default function CustomerDashboardPage() {
       // If status changed to confirmed, completed, or cancelled, and updated_at is recent
       const allBookings = data || [];
       const notificationBookings = allBookings
-        .filter(b => {
+        .filter((b: any) => {
           const updatedAt = new Date(b.updated_at);
           const createdAt = new Date(b.created_at);
           // If updated_at is significantly after created_at, it was likely changed by business owner
