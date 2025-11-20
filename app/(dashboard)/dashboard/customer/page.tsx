@@ -456,7 +456,9 @@ export default function CustomerDashboardPage() {
       setBookingsLoading(false);
     } finally {
       // Always clear loading state as a safety measure
-      clearTimeout(maxTimeout);
+      if (maxTimeout) {
+        clearTimeout(maxTimeout);
+      }
       console.log('Clearing bookings loading state in finally');
       setBookingsLoading(false);
     }
