@@ -75,7 +75,7 @@ export default function BusinessServicesPage() {
       // Load assigned staff for each service
       if (data) {
         const servicesWithStaff = await Promise.all(
-          data.map(async (service) => {
+          data.map(async (service: any) => {
             const { data: assignments } = await supabase
               .from('business_profile_staff_services')
               .select('staff_id, business_profile_staff(id, full_name)')
