@@ -2,9 +2,24 @@
 
 import { supabase } from '../supabase';
 import { revalidatePath } from 'next/cache';
+import { createClient } from '@supabase/supabase-js';
+
+// Get Supabase client (create if needed for server actions)
+const getSupabaseClient = () => {
+  if (supabase) return supabase;
+  
+  // Fallback: create client directly if supabase is null (build-time)
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) {
+    throw new Error('Supabase environment variables are not configured');
+  }
+  return createClient(url, key);
+};
 
 export async function getBookings(workspaceId: string) {
-  const { data, error } = await supabase
+  const client = getSupabaseClient();
+  const { data, error } = await client
     .from('bookings')
     .select(`
       *,
@@ -23,8 +38,9 @@ export async function getBookings(workspaceId: string) {
 
 export async function getUpcomingBookings(workspaceId: string) {
   const now = new Date().toISOString();
+  const client = getSupabaseClient();
 
-  const { data, error } = await supabase
+  const { data, error } = await client
     .from('bookings')
     .select(`
       *,
@@ -55,7 +71,8 @@ export async function createBooking(data: {
   status?: string;
   source?: string;
 }) {
-  const { data: booking, error } = await supabase
+  const client = getSupabaseClient();
+  const { data: booking, error } = await client
     .from('bookings')
     .insert({
       workspace_id: data.workspace_id,
@@ -82,7 +99,7 @@ export async function createBooking(data: {
 
   if (error) throw error;
 
-  await supabase
+  await client
     .from('client_activities')
     .insert({
       workspace_id: data.workspace_id,
@@ -102,7 +119,8 @@ export async function updateBookingStatus(
   bookingId: string,
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed'
 ) {
-  const { data, error } = await supabase
+  const client = getSupabaseClient();
+  const { data, error } = await client
     .from('bookings')
     .update({ status })
     .eq('id', bookingId)
@@ -119,10 +137,10 @@ export async function updateBookingStatus(
   if (error) throw error;
 
   if (status === 'completed') {
-    await supabase
+    await client
       .from('clients')
       .update({
-        lead_score: supabase.rpc('increment_lead_score', { client_id: data.client_id, points: 50 }),
+        lead_score: client.rpc('increment_lead_score', { client_id: data.client_id, points: 50 }),
       })
       .eq('id', data.client_id);
   }
@@ -142,7 +160,8 @@ export async function updateBookingPayment(
     updateData.amount = amount;
   }
 
-  const { data, error } = await supabase
+  const client = getSupabaseClient();
+  const { data, error } = await client
     .from('bookings')
     .update(updateData)
     .eq('id', bookingId)
@@ -155,7 +174,8 @@ export async function updateBookingPayment(
 }
 
 export async function deleteBooking(bookingId: string) {
-  const { error } = await supabase
+  const client = getSupabaseClient();
+  const { error } = await client
     .from('bookings')
     .delete()
     .eq('id', bookingId);

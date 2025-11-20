@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createBooking, updateBookingStatus } from '@/lib/actions/bookings';
 
+// Force dynamic rendering to prevent build-time execution
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
