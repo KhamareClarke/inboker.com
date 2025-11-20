@@ -378,7 +378,7 @@ export default function BusinessDashboardPage() {
 
   const dismissReview = (reviewId: string) => {
     setDismissedReviews(prev => new Set(Array.from(prev).concat(reviewId)));
-    setReviews(prev => prev.filter(r => r.id !== reviewId));
+    setReviews(prev => prev.filter((r: any) => r.id !== reviewId));
   };
 
   const loadNotifications = async (businessProfileId: string) => {
@@ -473,16 +473,16 @@ export default function BusinessDashboardPage() {
             // Only show as "new" if it was created recently and not significantly updated (not rescheduled)
             return updatedAt.getTime() - createdAt.getTime() < 60000; // Less than 1 minute difference
           })
-          .map(b => ({ ...b, type: 'new_booking' }));
+          .map((b: any) => ({ ...b, type: 'new_booking' }));
         
         // Only show cancelled bookings that were cancelled by customer (not recently updated)
         const cancelledBookings = (cancelledData || [])
           .filter(isUpdatedByCustomer)
-          .map(b => ({ ...b, type: 'cancelled' }));
+          .map((b: any) => ({ ...b, type: 'cancelled' }));
         
         // Only show rescheduled bookings that were rescheduled by customer (not recently updated)
         const rescheduledBookings = (allUpdatedData || [])
-          .filter(b => {
+          .filter((b: any) => {
             const updatedAt = new Date(b.updated_at);
             const createdAt = new Date(b.created_at);
             return b.status === 'pending' && 
@@ -490,13 +490,13 @@ export default function BusinessDashboardPage() {
                    updatedAt > sevenDaysAgo &&
                    isUpdatedByCustomer(b);
           })
-          .map(b => ({ ...b, type: 'rescheduled' }));
+          .map((b: any) => ({ ...b, type: 'rescheduled' }));
         
         const allNotifications = [
           ...newBookings,
           ...rescheduledBookings,
           ...cancelledBookings
-        ].filter(n => !dismissedNotifications.has(n.id));
+        ].filter((n: any) => !dismissedNotifications.has(n.id));
         
         setNotifications(allNotifications);
         
@@ -510,7 +510,7 @@ export default function BusinessDashboardPage() {
 
   const dismissNotification = (notificationId: string) => {
     setDismissedNotifications(prev => new Set(Array.from(prev).concat(notificationId)));
-    setNotifications(prev => prev.filter(n => n.id !== notificationId));
+    setNotifications(prev => prev.filter((n: any) => n.id !== notificationId));
   };
 
   const dismissAllNotifications = () => {
@@ -524,8 +524,8 @@ export default function BusinessDashboardPage() {
   const stats = useMemo(() => {
     const completedRevenue = completedBookings.reduce((sum, b) => sum + Number(b.amount || 0), 0);
     const uniqueClients = new Set([
-      ...upcomingBookings.map(b => b.client_email),
-      ...completedBookings.map(b => b.client_email)
+      ...upcomingBookings.map((b: any) => b.client_email),
+      ...completedBookings.map((b: any) => b.client_email)
     ]).size;
 
     const upcomingCount = upcomingBookings.length;
