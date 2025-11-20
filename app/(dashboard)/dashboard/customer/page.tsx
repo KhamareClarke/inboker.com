@@ -568,10 +568,10 @@ export default function CustomerDashboardPage() {
           ...b,
           type: b.status === 'confirmed' ? 'confirmed' : b.status === 'completed' ? 'completed' : 'cancelled'
         }))
-        .filter(n => !dismissedNotifications.has(n.id));
+        .filter((n: any) => !dismissedNotifications.has(n.id));
       
       // Check which completed appointments don't have reviews yet
-      const completedBookings = notificationBookings.filter(n => n.type === 'completed');
+      const completedBookings = notificationBookings.filter((n: any) => n.type === 'completed');
       if (completedBookings.length > 0) {
         const bookingIds = completedBookings.map(b => b.id);
         const { data: reviewsData } = await supabase
@@ -776,7 +776,7 @@ export default function CustomerDashboardPage() {
     return isFuture && isActive;
   });
   // Past bookings: appointments that are in the past OR completed OR cancelled (regardless of date)
-  const pastBookings = bookings.filter(b => {
+  const pastBookings = bookings.filter((b: any) => {
     const startTime = new Date(b.start_time);
     const isPast = startTime < now;
     const isCompleted = b.status === 'completed';
@@ -785,8 +785,8 @@ export default function CustomerDashboardPage() {
     return (isPast && !isCancelled) || isCompleted || isCancelled;
   });
   // Completed bookings: only those with status 'completed'
-  const completedBookings = bookings.filter(b => b.status === 'completed');
-  const favoriteBookingsList = bookings.filter(b => favoriteBookings.includes(b.id));
+  const completedBookings = bookings.filter((b: any) => b.status === 'completed');
+  const favoriteBookingsList = bookings.filter((b: any) => favoriteBookings.includes(b.id));
   const favoriteServicesList = services.filter(s => favoriteServices.includes(s.id));
   const totalFavorites = favoriteBookings.length + favoriteServices.length;
 
