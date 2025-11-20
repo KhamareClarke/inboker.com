@@ -188,11 +188,16 @@ export default function BrandProfilePage() {
         logo_url: logoPreview || profile?.logo_url || null,
       };
 
-      if (profile) {
-        await updateProfile(profileData);
-      } else {
-        await createProfile(profileData);
-      }
+      // Add timeout to prevent hanging
+      const savePromise = profile 
+        ? updateProfile(profileData)
+        : createProfile(profileData);
+      
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Save operation timed out. Please try again.')), 30000)
+      );
+
+      await Promise.race([savePromise, timeoutPromise]);
 
       toast({
         title: 'Saved!',
@@ -204,12 +209,14 @@ export default function BrandProfilePage() {
         window.location.reload();
       }, 1500);
     } catch (err: any) {
+      console.error('Save error:', err);
       toast({
         title: 'Save failed',
-        description: err.message || 'Failed to save profile',
+        description: err.message || 'Failed to save profile. Please try again.',
         variant: 'destructive',
       });
     } finally {
+      // Always clear saving state, even on timeout
       setSaving(false);
     }
   };

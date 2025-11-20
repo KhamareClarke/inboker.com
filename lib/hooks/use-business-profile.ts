@@ -83,7 +83,8 @@ export function useBusinessProfile() {
 
       console.log('Creating business profile for user:', currentUser.id);
 
-      const { data, error: createError } = await supabase
+      // Add timeout to prevent hanging on mobile
+      const insertPromise = supabase
         .from('business_profiles')
         .insert({
           user_id: currentUser.id,
@@ -103,6 +104,15 @@ export function useBusinessProfile() {
         .select()
         .single();
 
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Database operation timed out')), 20000)
+      );
+
+      const { data, error: createError } = await Promise.race([
+        insertPromise.then(r => ({ type: 'success', data: r.data, error: r.error })),
+        timeoutPromise.then(() => ({ type: 'timeout', data: null, error: { message: 'Operation timed out' } }))
+      ]) as any;
+
       if (createError) {
         console.error('Supabase create error:', createError);
         // Check if it's an auth error
@@ -110,6 +120,10 @@ export function useBusinessProfile() {
           throw new Error('Authentication expired. Please log in again.');
         }
         throw createError;
+      }
+
+      if (!data) {
+        throw new Error('Failed to create profile. Please try again.');
       }
 
       console.log('Business profile created successfully:', data.id);
@@ -155,12 +169,22 @@ export function useBusinessProfile() {
 
       console.log('Updating business profile for user:', currentUser.id);
 
-      const { data, error: updateError } = await supabase
+      // Add timeout to prevent hanging on mobile
+      const updatePromise = supabase
         .from('business_profiles')
         .update(updates)
         .eq('user_id', currentUser.id)
         .select()
         .single();
+
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Database operation timed out')), 20000)
+      );
+
+      const { data, error: updateError } = await Promise.race([
+        updatePromise.then(r => ({ type: 'success', data: r.data, error: r.error })),
+        timeoutPromise.then(() => ({ type: 'timeout', data: null, error: { message: 'Operation timed out' } }))
+      ]) as any;
 
       if (updateError) {
         console.error('Supabase update error:', updateError);
@@ -169,6 +193,10 @@ export function useBusinessProfile() {
           throw new Error('Authentication expired. Please log in again.');
         }
         throw updateError;
+      }
+
+      if (!data) {
+        throw new Error('Failed to update profile. Please try again.');
       }
 
       console.log('Business profile updated successfully:', data.id);
