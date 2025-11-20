@@ -573,15 +573,15 @@ export default function CustomerDashboardPage() {
       // Check which completed appointments don't have reviews yet
       const completedBookings = notificationBookings.filter((n: any) => n.type === 'completed');
       if (completedBookings.length > 0) {
-        const bookingIds = completedBookings.map(b => b.id);
+        const bookingIds = completedBookings.map((b: any) => b.id);
         const { data: reviewsData } = await supabase
           .from('appointment_reviews')
           .select('booking_id')
           .in('booking_id', bookingIds);
         
-        const reviewedBookingIds = new Set((reviewsData || []).map(r => r.booking_id));
+        const reviewedBookingIds = new Set((reviewsData || []).map((r: any) => r.booking_id));
         // Mark which notifications need reviews
-        notificationBookings.forEach(n => {
+        notificationBookings.forEach((n: any) => {
           if (n.type === 'completed' && !reviewedBookingIds.has(n.id)) {
             n.needsReview = true;
           }
