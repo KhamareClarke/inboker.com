@@ -223,8 +223,8 @@ export default function AdminDashboardPage() {
             .eq('business_profile_id', profile?.id || '');
 
           const now = new Date();
-          const upcoming = (appointments || []).filter(a => new Date(a.start_time) >= now && ['pending', 'confirmed'].includes(a.status));
-          const rescheduled = (appointments || []).filter(a => {
+          const upcoming = (appointments || []).filter((a: any) => new Date(a.start_time) >= now && ['pending', 'confirmed'].includes(a.status));
+          const rescheduled = (appointments || []).filter((a: any) => {
             // Check if rescheduled (updated_at significantly after created_at)
             return a.status === 'pending';
           });
