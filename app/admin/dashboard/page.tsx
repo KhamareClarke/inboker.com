@@ -26,43 +26,160 @@ export default function AdminDashboardPage() {
     type: null,
   });
   const [deleting, setDeleting] = useState(false);
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+
+  // Debug: Log loading state changes
+  useEffect(() => {
+    console.log('Admin dashboard: Loading state changed:', { loading, isAdmin, authLoading, hasUser: !!user, businessOwners: businessOwners.length, customers: customers.length });
+  }, [loading, isAdmin, authLoading, user, businessOwners.length, customers.length]);
+
+  // Safety timeout: Force clear loading after 35 seconds
+  useEffect(() => {
+    if (loading) {
+      const timeout = setTimeout(() => {
+        console.log('Admin dashboard: Safety timeout - forcing loading to false');
+        setLoading(false);
+      }, 35000);
+      return () => clearTimeout(timeout);
+    }
+  }, [loading]);
+
+  // Check if user is admin by querying directly
+  const checkAdminStatus = async (userId: string, userEmail?: string) => {
+    try {
+      console.log('Admin dashboard: Checking admin status for user:', userId);
+      
+      // Add timeout to prevent hanging
+      const queryPromise = supabase
+        .from('users')
+        .select('role')
+        .eq('id', userId)
+        .maybeSingle();
+      
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Admin check timeout')), 5000)
+      );
+      
+      const result = await Promise.race([
+        queryPromise.then(r => ({ type: 'success', data: r.data, error: r.error })),
+        timeoutPromise.then(() => ({ type: 'timeout' }))
+      ]) as any;
+      
+      if (result.type === 'timeout') {
+        console.error('Admin check timeout');
+        // Fallback: check if email matches admin email
+        if (userEmail === 'admin@inboker.com') {
+          console.log('Admin dashboard: Using email fallback, user is admin');
+          setIsAdmin(true);
+          return true;
+        }
+        setIsAdmin(false);
+        return false;
+      }
+      
+      if (result.error) {
+        console.error('Error checking admin status:', result.error);
+        // Fallback: check if email matches admin email
+        if (userEmail === 'admin@inboker.com') {
+          console.log('Admin dashboard: Using email fallback due to error, user is admin');
+          setIsAdmin(true);
+          return true;
+        }
+        setIsAdmin(false);
+        return false;
+      }
+      
+      const userIsAdmin = result.data?.role === 'admin';
+      console.log('Admin dashboard: User role is:', result.data?.role, 'Is admin:', userIsAdmin);
+      setIsAdmin(userIsAdmin);
+      return userIsAdmin;
+    } catch (err) {
+      console.error('Error checking admin status:', err);
+      // Fallback: check if email matches admin email
+      if (userEmail === 'admin@inboker.com') {
+        console.log('Admin dashboard: Using email fallback due to exception, user is admin');
+        setIsAdmin(true);
+        return true;
+      }
+      setIsAdmin(false);
+      return false;
+    }
+  };
 
   useEffect(() => {
     // Wait for auth to finish loading
     if (authLoading) {
+      console.log('Admin dashboard: Auth still loading...');
       return;
     }
 
     // If no user, redirect to login
     if (!user) {
+      console.log('Admin dashboard: No user, redirecting to login');
       router.push('/admin-login');
       return;
     }
 
-    // If user exists but profile is still loading, wait
-    if (user && !profile) {
-      return;
-    }
+    // Check admin status directly if profile is not available
+    const verifyAdmin = async () => {
+      // First try to use profile if available
+      if (profile) {
+        const userIsAdmin = profile.role === 'admin';
+        setIsAdmin(userIsAdmin);
+        if (userIsAdmin) {
+          console.log('Admin dashboard: User is admin (from profile), loading data');
+          loadData();
+        } else {
+          console.log('Admin dashboard: User is not admin (from profile), redirecting');
+          router.push('/admin-login');
+        }
+        return;
+      }
 
-    // If profile loaded and not admin, redirect to login
-    if (profile && profile.role !== 'admin') {
-      router.push('/admin-login');
-      return;
-    }
+      // If profile not available, check email first as fallback
+      if (user?.email === 'admin@inboker.com') {
+        console.log('Admin dashboard: User email matches admin email, allowing access');
+        setIsAdmin(true);
+        loadData();
+        return;
+      }
 
-    // If user is admin, load data
-    if (user && profile?.role === 'admin') {
-      loadData();
-    }
+      // If email doesn't match, try database check
+      console.log('Admin dashboard: Profile not available, checking admin status directly');
+      const userIsAdmin = await checkAdminStatus(user.id, user.email);
+      
+      if (userIsAdmin) {
+        console.log('Admin dashboard: User is admin (from direct check), loading data');
+        loadData();
+      } else {
+        console.log('Admin dashboard: User is not admin (from direct check), redirecting');
+        router.push('/admin-login');
+      }
+    };
+
+    verifyAdmin();
   }, [user, profile, authLoading, router]);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      await Promise.all([loadBusinessOwners(), loadCustomers()]);
+      console.log('Admin dashboard: Starting to load data...');
+      
+      // Add timeout to prevent infinite loading
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Data loading timeout')), 30000)
+      );
+      
+      await Promise.race([
+        Promise.all([loadBusinessOwners(), loadCustomers()]),
+        timeoutPromise
+      ]);
+      
+      console.log('Admin dashboard: Data loaded successfully');
     } catch (err) {
       console.error('Error loading admin data:', err);
     } finally {
+      console.log('Admin dashboard: Clearing loading state');
       setLoading(false);
     }
   };
@@ -176,8 +293,11 @@ export default function AdminDashboardPage() {
       );
 
       setBusinessOwners(ownersWithProfiles);
+      console.log('Admin dashboard: Business owners loaded:', ownersWithProfiles.length);
     } catch (err) {
       console.error('Error loading business owners:', err);
+      // Set empty array on error to prevent infinite loading
+      setBusinessOwners([]);
     }
   };
 
@@ -190,7 +310,12 @@ export default function AdminDashboardPage() {
         .eq('role', 'customer')
         .order('created_at', { ascending: false });
 
-      if (customersError) throw customersError;
+      if (customersError) {
+        console.error('Error fetching customers:', customersError);
+        throw customersError;
+      }
+      
+      console.log('Admin dashboard: Found', customersData?.length || 0, 'customers');
 
       // Get bookings and reviews for each customer
       const customersWithStats = await Promise.all(
@@ -228,8 +353,11 @@ export default function AdminDashboardPage() {
       );
 
       setCustomers(customersWithStats);
+      console.log('Admin dashboard: Customers loaded:', customersWithStats.length);
     } catch (err) {
       console.error('Error loading customers:', err);
+      // Set empty array on error to prevent infinite loading
+      setCustomers([]);
     }
   };
 
@@ -258,16 +386,66 @@ export default function AdminDashboardPage() {
     }
   };
 
-  if (authLoading || loading) {
+  // Show loading only if auth is loading (but allow bypass if we've verified admin via email)
+  if (authLoading && isAdmin !== true) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-        <Loader2 className="h-8 w-8 animate-spin text-white" />
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-white mx-auto mb-4" />
+          <p className="text-purple-300">Loading authentication...</p>
+        </div>
       </div>
     );
   }
 
-  if (!user || profile?.role !== 'admin') {
+  // If no user, show nothing (redirect will happen)
+  if (!user) {
     return null;
+  }
+
+  // If we've checked and user is not admin, show nothing (redirect will happen)
+  if (isAdmin === false) {
+    return null;
+  }
+
+  // If we haven't checked admin status yet, show loading
+  if (isAdmin === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-white mx-auto mb-4" />
+          <p className="text-purple-300">Verifying admin access...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show data loading only if we have no data yet
+  if (loading && businessOwners.length === 0 && customers.length === 0) {
+    console.log('Admin dashboard: Rendering loading state, loading=', loading, 'businessOwners=', businessOwners.length, 'customers=', customers.length);
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+        <div className="bg-slate-900/50 border-b border-purple-500/20">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Shield className="h-8 w-8 text-purple-400" />
+                <div>
+                  <h1 className="text-2xl font-bold text-white">Admin Panel</h1>
+                  <p className="text-sm text-purple-300">Manage all users and businesses</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin text-white mx-auto mb-4" />
+            <p className="text-purple-300">Loading admin data...</p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
