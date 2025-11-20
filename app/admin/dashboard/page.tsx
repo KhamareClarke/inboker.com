@@ -228,11 +228,11 @@ export default function AdminDashboardPage() {
             // Check if rescheduled (updated_at significantly after created_at)
             return a.status === 'pending';
           });
-          const cancelled = (appointments || []).filter(a => a.status === 'cancelled');
-          const completed = (appointments || []).filter(a => a.status === 'completed');
+          const cancelled = (appointments || []).filter((a: any) => a.status === 'cancelled');
+          const completed = (appointments || []).filter((a: any) => a.status === 'completed');
           
           // Calculate revenue from completed appointments
-          const revenue = completed.reduce((sum, apt) => sum + (Number(apt.amount) || 0), 0);
+          const revenue = completed.reduce((sum: number, apt: any) => sum + (Number(apt.amount) || 0), 0);
           
           // Get monthly completed appointments (last 30 days)
           const thirtyDaysAgo = new Date();
