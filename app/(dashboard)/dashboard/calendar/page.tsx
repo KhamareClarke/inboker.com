@@ -253,7 +253,7 @@ export default function CalendarPage() {
         .select('business_slug')
         .eq('id', appointment.business_profile_id)
         .single()
-        .then(({ data }) => {
+        .then(({ data }: any) => {
           if (data?.business_slug) {
             router.push(`/${data.business_slug}/appointments?appointmentId=${appointment.id}`);
           }
