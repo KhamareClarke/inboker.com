@@ -627,7 +627,7 @@ export default function CustomerDashboardPage() {
       );
 
       const result = await Promise.race([
-        queryPromise.then(r => ({ type: 'success', data: r.data, error: r.error })),
+        queryPromise.then((r: any) => ({ type: 'success', data: r.data, error: r.error })),
         timeoutPromise.then(() => ({ type: 'timeout' }))
       ]) as any;
 
