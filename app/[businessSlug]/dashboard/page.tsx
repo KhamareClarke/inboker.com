@@ -467,7 +467,7 @@ export default function BusinessDashboardPage() {
         
         // New bookings (recently created, not rescheduled)
         const newBookings = (newBookingsData || [])
-          .filter(b => {
+          .filter((b: any) => {
             const updatedAt = new Date(b.updated_at);
             const createdAt = new Date(b.created_at);
             // Only show as "new" if it was created recently and not significantly updated (not rescheduled)
