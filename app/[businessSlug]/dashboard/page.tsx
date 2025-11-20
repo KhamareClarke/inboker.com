@@ -369,7 +369,7 @@ export default function BusinessDashboardPage() {
         return;
       }
 
-      const activeReviews = (data || []).filter(r => !dismissedReviews.has(r.id));
+      const activeReviews = (data || []).filter((r: any) => !dismissedReviews.has(r.id));
       setReviews(activeReviews);
     } catch (err) {
       console.error('Error loading reviews:', err);
