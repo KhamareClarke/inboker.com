@@ -51,15 +51,42 @@ export function useBusinessProfile() {
   };
 
   const createProfile = async (profileData: Partial<BusinessProfile>) => {
-    if (!user) throw new Error('User not authenticated');
+    // First, try to get the current user from Supabase directly
+    // This helps with mobile browsers where session might not be detected
+    let currentUser = user;
+    
+    if (!currentUser) {
+      console.log('User not found in auth context, checking session directly...');
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) {
+          console.error('Session error:', sessionError);
+          throw new Error('User not authenticated. Please log in again.');
+        }
+        if (!session?.user) {
+          throw new Error('User not authenticated. Please log in again.');
+        }
+        currentUser = session.user;
+        console.log('Found user from session:', currentUser.id);
+      } catch (sessionErr: any) {
+        console.error('Error getting session:', sessionErr);
+        throw new Error('User not authenticated. Please log in again.');
+      }
+    }
+
+    if (!currentUser) {
+      throw new Error('User not authenticated. Please log in again.');
+    }
 
     try {
       setError(null);
 
+      console.log('Creating business profile for user:', currentUser.id);
+
       const { data, error: createError } = await supabase
         .from('business_profiles')
         .insert({
-          user_id: user.id,
+          user_id: currentUser.id,
           business_name: profileData.business_name || '',
           logo_url: profileData.logo_url || null,
           description: profileData.description || null,
@@ -76,8 +103,16 @@ export function useBusinessProfile() {
         .select()
         .single();
 
-      if (createError) throw createError;
+      if (createError) {
+        console.error('Supabase create error:', createError);
+        // Check if it's an auth error
+        if (createError.code === 'PGRST301' || createError.message?.includes('JWT') || createError.message?.includes('authentication')) {
+          throw new Error('Authentication expired. Please log in again.');
+        }
+        throw createError;
+      }
 
+      console.log('Business profile created successfully:', data.id);
       setProfile(data);
       return data;
     } catch (err: any) {
@@ -88,20 +123,55 @@ export function useBusinessProfile() {
   };
 
   const updateProfile = async (updates: Partial<BusinessProfile>) => {
-    if (!user) throw new Error('User not authenticated');
+    // First, try to get the current user from Supabase directly
+    // This helps with mobile browsers where session might not be detected
+    let currentUser = user;
+    
+    if (!currentUser) {
+      console.log('User not found in auth context, checking session directly...');
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) {
+          console.error('Session error:', sessionError);
+          throw new Error('User not authenticated. Please log in again.');
+        }
+        if (!session?.user) {
+          throw new Error('User not authenticated. Please log in again.');
+        }
+        currentUser = session.user;
+        console.log('Found user from session:', currentUser.id);
+      } catch (sessionErr: any) {
+        console.error('Error getting session:', sessionErr);
+        throw new Error('User not authenticated. Please log in again.');
+      }
+    }
+
+    if (!currentUser) {
+      throw new Error('User not authenticated. Please log in again.');
+    }
 
     try {
       setError(null);
 
+      console.log('Updating business profile for user:', currentUser.id);
+
       const { data, error: updateError } = await supabase
         .from('business_profiles')
         .update(updates)
-        .eq('user_id', user.id)
+        .eq('user_id', currentUser.id)
         .select()
         .single();
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('Supabase update error:', updateError);
+        // Check if it's an auth error
+        if (updateError.code === 'PGRST301' || updateError.message?.includes('JWT') || updateError.message?.includes('authentication')) {
+          throw new Error('Authentication expired. Please log in again.');
+        }
+        throw updateError;
+      }
 
+      console.log('Business profile updated successfully:', data.id);
       setProfile(data);
       return data;
     } catch (err: any) {
