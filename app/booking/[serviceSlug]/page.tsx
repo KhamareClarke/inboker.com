@@ -237,7 +237,7 @@ export default function ServiceBookingPage() {
             body: JSON.stringify({
               type: 'new_booking',
               bookingId: newBooking.id,
-              businessEmail: businessProfile.email || '', // Will be fetched in API
+              businessEmail: businessProfile.contact_email || '', // Will be fetched in API
             }),
           });
         } catch (emailError) {
