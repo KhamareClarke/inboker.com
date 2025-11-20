@@ -149,7 +149,7 @@ export default function CustomerBookingsPage() {
       );
 
       const result = await Promise.race([
-        updatePromise.then(r => ({ type: 'success', error: r.error })),
+        updatePromise.then((r: any) => ({ type: 'success', error: r.error })),
         timeoutPromise.then(() => ({ type: 'timeout' }))
       ]) as any;
 
@@ -257,7 +257,7 @@ export default function CustomerBookingsPage() {
       );
 
       const result = await Promise.race([
-        updatePromise.then(r => ({ type: 'success', error: r.error })),
+        updatePromise.then((r: any) => ({ type: 'success', error: r.error })),
         timeoutPromise.then(() => ({ type: 'timeout' }))
       ]) as any;
 
@@ -349,7 +349,7 @@ export default function CustomerBookingsPage() {
       );
 
       const result = await Promise.race([
-        insertPromise.then(r => ({ type: 'success', error: r.error })),
+        insertPromise.then((r: any) => ({ type: 'success', error: r.error })),
         timeoutPromise.then(() => ({ type: 'timeout' }))
       ]) as any;
 

@@ -105,7 +105,7 @@ export default function BusinessDashboardPage() {
         );
 
         const result = await Promise.race([
-          queryPromise.then(r => {
+          queryPromise.then((r: any) => {
             console.log('Slug query completed:', { data: r.data, error: r.error });
             return { type: 'success', data: r.data, error: r.error };
           }),
@@ -164,7 +164,7 @@ export default function BusinessDashboardPage() {
         );
 
         const result = await Promise.race([
-          queryPromise.then(r => ({ type: 'success', data: r.data, error: r.error })),
+          queryPromise.then((r: any) => ({ type: 'success', data: r.data, error: r.error })),
           timeoutPromise.then(() => ({ type: 'timeout' }))
         ]) as any;
 
@@ -193,7 +193,7 @@ export default function BusinessDashboardPage() {
         );
 
         const result = await Promise.race([
-          queryPromise.then(r => ({ type: 'success', data: r.data, error: r.error })),
+          queryPromise.then((r: any) => ({ type: 'success', data: r.data, error: r.error })),
           timeoutPromise.then(() => ({ type: 'timeout' }))
         ]) as any;
 
@@ -224,7 +224,7 @@ export default function BusinessDashboardPage() {
           );
 
           const result = await Promise.race([
-            queryPromise.then(r => ({ type: 'success', data: r.data, error: r.error })),
+            queryPromise.then((r: any) => ({ type: 'success', data: r.data, error: r.error })),
             timeoutPromise.then(() => ({ type: 'timeout' }))
           ]) as any;
 
