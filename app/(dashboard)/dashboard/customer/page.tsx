@@ -641,8 +641,8 @@ export default function CustomerDashboardPage() {
         setFavoriteServices([]);
       } else {
         console.log('Successfully loaded favorites:', result.data?.length || 0);
-        setFavoriteBookings((result.data || []).filter(f => f.booking_id).map(f => f.booking_id));
-        setFavoriteServices((result.data || []).filter(f => f.service_id).map(f => f.service_id));
+        setFavoriteBookings((result.data || []).filter((f: any) => f.booking_id).map((f: any) => f.booking_id));
+        setFavoriteServices((result.data || []).filter((f: any) => f.service_id).map((f: any) => f.service_id));
       }
     } catch (err) {
       console.error('Error loading favorites:', err);
