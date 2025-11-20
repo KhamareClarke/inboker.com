@@ -197,7 +197,7 @@ export default function AdminDashboardPage() {
 
       // Get business profiles for each owner
       const ownersWithProfiles = await Promise.all(
-        (owners || []).map(async (owner) => {
+        (owners || []).map(async (owner: any) => {
           const { data: profile } = await supabase
             .from('business_profiles')
             .select('*')
