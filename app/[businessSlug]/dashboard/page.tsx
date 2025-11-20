@@ -377,7 +377,7 @@ export default function BusinessDashboardPage() {
   };
 
   const dismissReview = (reviewId: string) => {
-    setDismissedReviews(prev => new Set([...prev, reviewId]));
+    setDismissedReviews(prev => new Set(Array.from(prev).concat(reviewId)));
     setReviews(prev => prev.filter(r => r.id !== reviewId));
   };
 
@@ -509,13 +509,13 @@ export default function BusinessDashboardPage() {
   };
 
   const dismissNotification = (notificationId: string) => {
-    setDismissedNotifications(prev => new Set([...prev, notificationId]));
+    setDismissedNotifications(prev => new Set(Array.from(prev).concat(notificationId)));
     setNotifications(prev => prev.filter(n => n.id !== notificationId));
   };
 
   const dismissAllNotifications = () => {
     notifications.forEach(n => {
-      setDismissedNotifications(prev => new Set([...prev, n.id]));
+      setDismissedNotifications(prev => new Set(Array.from(prev).concat(n.id)));
     });
     setNotifications([]);
   };
