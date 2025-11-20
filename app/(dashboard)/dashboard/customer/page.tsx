@@ -564,7 +564,7 @@ export default function CustomerDashboardPage() {
           
           return wasChangedByBusiness && isBusinessAction && updatedAt > sevenDaysAgo;
         })
-        .map(b => ({
+        .map((b: any) => ({
           ...b,
           type: b.status === 'confirmed' ? 'confirmed' : b.status === 'completed' ? 'completed' : 'cancelled'
         }))
