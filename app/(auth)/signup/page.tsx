@@ -4,15 +4,19 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { signUp } from '@/lib/auth';
+import type { UserRole } from '@/lib/auth';
+import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Sparkles, ArrowRight } from 'lucide-react';
+import { Loader2, Sparkles, ArrowRight, Briefcase, User } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function SignupPage() {
   const router = useRouter();
+  const [userType, setUserType] = useState<'business_owner' | 'customer'>('business_owner');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -37,11 +41,42 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
-      await signUp(email, password, fullName);
-      router.push('/onboarding');
+      const role: UserRole = userType === 'business_owner' ? 'business_owner' : 'customer';
+      console.log('🔄 Starting signup...');
+      
+      // Add timeout to signup
+      const signupPromise = signUp(email, password, fullName, role);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('TIMEOUT')), 10000)
+      );
+      
+      const result = await Promise.race([signupPromise, timeoutPromise]) as any;
+      
+      console.log('✅ Signup result:', result);
+      
+      // If signup succeeded (user was created), redirect to login
+      if (result && result.user) {
+        console.log('✅ User created successfully!');
+        setError('');
+        setLoading(false);
+        
+        // Show success message briefly, then redirect to login
+        alert('Account created successfully! Please login.');
+        window.location.href = '/login';
+        return;
+      }
+      
+      // If we get here, something went wrong
+      setError('Signup completed but redirect failed. Please try logging in.');
+      setLoading(false);
     } catch (err: any) {
-      setError(err.message || 'Failed to create account');
-    } finally {
+      console.error('❌ Signup error:', err);
+      
+      if (err.message === 'TIMEOUT') {
+        setError('Signup is taking too long. Please try again.');
+      } else {
+        setError(err.message || 'Failed to create account');
+      }
       setLoading(false);
     }
   };
@@ -63,15 +98,41 @@ export default function SignupPage() {
             <CardTitle className="text-3xl font-bold">Create an account</CardTitle>
           </div>
           <CardDescription className="text-center text-base">
-            Get started with your AI-powered booking platform
+            Choose your account type to get started
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
+            <Tabs value={userType} onValueChange={(value) => setUserType(value as 'business_owner' | 'customer')} className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="business_owner" className="flex items-center gap-2">
+                  <Briefcase className="h-4 w-4" />
+                  Business Owner
+                </TabsTrigger>
+                <TabsTrigger value="customer" className="flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Customer
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
             {error && (
               <Alert variant="destructive">
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
+            )}
+            
+            {userType === 'business_owner' && (
+              <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 text-sm text-blue-900 dark:text-blue-200">
+                <p className="font-medium mb-1">Business Owner Account</p>
+                <p>Create and manage your booking business. Access dashboard, manage services, staff, and bookings.</p>
+              </div>
+            )}
+            
+            {userType === 'customer' && (
+              <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-3 text-sm text-green-900 dark:text-green-200">
+                <p className="font-medium mb-1">Customer Account</p>
+                <p>Book appointments with businesses. View and manage your bookings.</p>
+              </div>
             )}
             <div className="space-y-2">
               <Label htmlFor="fullName">Full Name</Label>

@@ -1,18 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { signIn } from '@/lib/auth';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Sparkles, ArrowRight } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -23,120 +15,155 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
 
-    console.log('Starting login for:', email);
-
     try {
-      const result = await signIn(email, password);
-      console.log('Login result:', result);
+      console.log('🔵 Calling login API...');
+      
+      // Add timeout to fetch
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-      if (result && result.session) {
-        console.log('Session created successfully, redirecting...');
-        // Force a hard refresh to ensure middleware picks up the session
-        window.location.href = '/dashboard';
-      } else {
-        console.error('No session created');
-        throw new Error('No session created');
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), password }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      console.log('🔵 API response:', response.status);
+
+      const result = await response.json();
+      console.log('🔵 API result:', result);
+
+      if (!response.ok) {
+        // Check if it's a suspended account error
+        if (response.status === 403 || result.error?.includes('suspended')) {
+          setError('Your account has been suspended by admin');
+        } else {
+          setError(result.error || 'Invalid email or password');
+        }
+        setLoading(false);
+        return;
       }
+
+      if (result.success && result.session) {
+        console.log('✅ Login successful, setting session...');
+        
+        // Set session - use a longer timeout
+        const setSessionPromise = supabase.auth.setSession({
+          access_token: result.session.access_token,
+          refresh_token: result.session.refresh_token,
+        });
+
+        const sessionTimeout = new Promise((resolve) => 
+          setTimeout(() => resolve({ success: false }), 3000)
+        );
+
+        try {
+          await Promise.race([setSessionPromise, sessionTimeout]);
+          console.log('✅ Session set (or timeout)');
+        } catch (sessionErr) {
+          console.warn('Session set warning:', sessionErr);
+        }
+        
+        // Get role and business slug from login response
+        const role = result.role || 'business_owner';
+        const businessSlug = result.businessSlug;
+        
+        console.log('✅ User role from login:', role);
+        console.log('✅ Business slug:', businessSlug);
+        
+        // Redirect based on role
+        if (role === 'customer') {
+          console.log('✅ Redirecting customer to /dashboard/customer');
+          window.location.href = '/dashboard/customer';
+        } else if (role === 'business_owner') {
+          // If business owner has a business profile, redirect to business dashboard
+          if (businessSlug) {
+            console.log('✅ Redirecting business owner to /' + businessSlug + '/dashboard');
+            window.location.href = `/${businessSlug}/dashboard`;
+          } else {
+            console.log('✅ Redirecting business owner to /dashboard/business-owner (no profile)');
+            window.location.href = '/dashboard/business-owner';
+          }
+        } else if (role === 'admin') {
+          console.log('✅ Redirecting admin to /admin');
+          window.location.href = '/admin';
+        } else {
+          console.log('⚠️ Unknown role, defaulting to business owner');
+          window.location.href = '/dashboard/business-owner';
+        }
+        return;
+      }
+
+      setError('Login failed');
+      setLoading(false);
     } catch (err: any) {
-      console.error('Login error:', err);
-      setError(err.message || 'Failed to sign in');
+      console.error('❌ Login error:', err);
+      if (err.name === 'AbortError') {
+        setError('Login timed out. Please check your connection.');
+      } else {
+        setError('Login failed. Please try again.');
+      }
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden p-4">
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-cyan-50 to-indigo-50 dark:from-blue-950/30 dark:via-cyan-950/30 dark:to-indigo-950/30" />
-      <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLW9wYWNpdHk9IjAuMDMiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIvPjwvc3ZnPg==')] opacity-40" />
-
-      <Card className="w-full max-w-md relative border-2 shadow-2xl backdrop-blur-sm bg-background/80">
-        <CardHeader className="space-y-3 pb-6">
-          <div className="flex flex-col items-center gap-3 mb-2">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-100 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/30 border border-blue-200 dark:border-blue-800">
-              <Sparkles className="h-4 w-4 text-blue-600" />
-              <span className="text-sm font-medium bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
-                Inboker
-              </span>
-            </div>
-            <CardTitle className="text-3xl font-bold">Welcome back</CardTitle>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="w-full max-w-md p-8 bg-white rounded-lg shadow-md">
+        <h1 className="text-2xl font-bold mb-6 text-center">Login</h1>
+        
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
+            {error}
           </div>
-          <CardDescription className="text-center text-base">
-            Sign in to access your AI-powered booking dashboard
-          </CardDescription>
-        </CardHeader>
-        <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
-            {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Email</label>
+            <input
                 type="email"
-                placeholder="name@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+              className="w-full px-3 py-2 border rounded-md"
                 disabled={loading}
-                className="h-11"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Password</label>
+            <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+              className="w-full px-3 py-2 border rounded-md"
                 disabled={loading}
-                className="h-11"
               />
             </div>
-            <div className="flex items-center justify-end">
-              <Link
-                href="/forgot-password"
-                className="text-sm text-muted-foreground hover:text-blue-600 transition-colors"
-              >
-                Forgot password?
-              </Link>
-            </div>
-          </CardContent>
-          <CardFooter className="flex flex-col space-y-4 pt-2">
-            <Button
+
+          <button
               type="submit"
-              className="w-full h-12 bg-gradient-to-r from-blue-600 via-cyan-600 to-blue-600 hover:from-blue-700 hover:via-cyan-700 hover:to-blue-700 shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 transition-all duration-300 bg-[length:200%_100%] hover:bg-right"
               disabled={loading}
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Signing in...
-                </>
-              ) : (
-                <>
-                  Sign In
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </>
-              )}
-            </Button>
-            <div className="text-sm text-center text-muted-foreground">
-              Don't have an account?{' '}
-              <Link href="/signup" className="text-blue-600 hover:text-blue-700 font-medium hover:underline">
-                Sign up
-              </Link>
-            </div>
-            <div className="text-center pt-2">
-              <Link href="/" className="text-sm text-muted-foreground hover:text-blue-600 transition-colors">
-                ← Back to home
-              </Link>
-            </div>
-          </CardFooter>
+            className="w-full py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+          >
+            {loading ? 'Logging in...' : 'Login'}
+          </button>
         </form>
-      </Card>
+
+        <div className="mt-6 text-center">
+          <p className="text-sm text-gray-600">
+            Don't have an account?{' '}
+            <Link href="/signup" className="text-blue-600 hover:text-blue-700 font-medium">
+              Sign up
+            </Link>
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

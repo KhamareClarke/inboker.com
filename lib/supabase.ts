@@ -3,7 +3,13 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  },
+});
 
 export type Database = {
   public: {
@@ -33,12 +39,15 @@ export type Database = {
           full_name: string;
           avatar_url: string | null;
           timezone: string;
+          role: 'admin' | 'business_owner' | 'customer';
+          suspended: boolean;
           created_at: string;
           updated_at: string;
         };
         Insert: Omit<Database['public']['Tables']['users']['Row'], 'created_at' | 'updated_at'> & {
           created_at?: string;
           updated_at?: string;
+          role?: 'admin' | 'business_owner' | 'customer';
         };
         Update: Partial<Database['public']['Tables']['users']['Insert']>;
       };
@@ -174,6 +183,113 @@ export type Database = {
           created_at?: string;
         };
         Update: Partial<Database['public']['Tables']['availability_overrides']['Insert']>;
+      };
+      business_profiles: {
+        Row: {
+          id: string;
+          user_id: string;
+          business_name: string;
+          business_slug: string | null;
+          logo_url: string | null;
+          description: string | null;
+          contact_email: string | null;
+          contact_phone: string | null;
+          website: string | null;
+          primary_color: string;
+          secondary_color: string;
+          booking_page_title: string | null;
+          booking_page_subtitle: string | null;
+          social_links: Record<string, any>;
+          custom_settings: Record<string, any>;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['business_profiles']['Row'], 'id' | 'created_at' | 'updated_at'> & {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['business_profiles']['Insert']>;
+      };
+      business_profile_services: {
+        Row: {
+          id: string;
+          business_profile_id: string;
+          name: string;
+          description: string | null;
+          duration_minutes: number;
+          price: number;
+          is_active: boolean;
+          color: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['business_profile_services']['Row'], 'id' | 'created_at' | 'updated_at'> & {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['business_profile_services']['Insert']>;
+      };
+      business_profile_staff: {
+        Row: {
+          id: string;
+          business_profile_id: string;
+          full_name: string;
+          email: string | null;
+          phone: string | null;
+          role: string;
+          avatar_url: string | null;
+          bio: string | null;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['business_profile_staff']['Row'], 'id' | 'created_at' | 'updated_at'> & {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['business_profile_staff']['Insert']>;
+      };
+      business_profile_staff_services: {
+        Row: {
+          id: string;
+          staff_id: string;
+          service_id: string;
+          created_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['business_profile_staff_services']['Row'], 'id' | 'created_at'> & {
+          id?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['business_profile_staff_services']['Insert']>;
+      };
+      business_profile_bookings: {
+        Row: {
+          id: string;
+          business_profile_id: string;
+          service_id: string;
+          staff_id: string | null;
+          client_name: string;
+          client_email: string;
+          client_phone: string | null;
+          client_notes: string | null;
+          start_time: string;
+          end_time: string;
+          status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+          amount: number | null;
+          payment_status: 'unpaid' | 'paid' | 'refunded';
+          source: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['business_profile_bookings']['Row'], 'id' | 'created_at' | 'updated_at'> & {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['business_profile_bookings']['Insert']>;
       };
     };
   };

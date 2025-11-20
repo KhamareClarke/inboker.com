@@ -4,6 +4,7 @@ import { Inter } from 'next/font/google';
 import { AuthProvider } from '@/lib/providers/auth-provider';
 import { WorkspaceProvider } from '@/lib/providers/workspace-provider';
 import { Toaster } from '@/components/ui/toaster';
+import { ConditionalLayout } from '@/components/layout/conditional-layout';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -22,7 +23,9 @@ export default function RootLayout({
       <body className={inter.className}>
         <AuthProvider>
           <WorkspaceProvider>
-            {children}
+            <ConditionalLayout>
+              {children}
+            </ConditionalLayout>
             <Toaster />
           </WorkspaceProvider>
         </AuthProvider>

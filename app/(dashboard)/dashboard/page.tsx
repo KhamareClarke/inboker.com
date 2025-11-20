@@ -1,8 +1,29 @@
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Users, BookOpen, TrendingUp, Sparkles, Bot } from 'lucide-react';
+import { useAuth } from '@/lib/providers/auth-provider';
 
 export default function DashboardPage() {
+  const { profile, user, role, loading } = useAuth();
+  const router = useRouter();
+  const userName = profile?.full_name || user?.email || 'User';
+
+  // Redirect customers to their dashboard, business owners to theirs
+  useEffect(() => {
+    if (!loading && role) {
+      if (role === 'customer') {
+        router.replace('/dashboard/customer');
+      } else if (role === 'business_owner') {
+        router.replace('/dashboard/business-owner');
+      } else if (role === 'admin') {
+        router.replace('/admin/dashboard');
+      }
+    }
+  }, [role, loading, router]);
   const stats = [
     {
       title: 'Total Bookings',
@@ -43,7 +64,7 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-4xl font-bold tracking-tight mb-2">Dashboard</h1>
-          <p className="text-muted-foreground text-lg">Welcome back to your AI-powered booking platform</p>
+          <p className="text-muted-foreground text-lg">Welcome back, {userName}! 👋</p>
         </div>
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-100 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/30 border border-blue-200 dark:border-blue-800">
           <Bot className="h-4 w-4 text-blue-600" />

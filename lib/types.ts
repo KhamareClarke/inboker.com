@@ -9,6 +9,9 @@ export type Client = Database['public']['Tables']['clients']['Row'];
 export type Booking = Database['public']['Tables']['bookings']['Row'];
 export type ClientActivity = Database['public']['Tables']['client_activities']['Row'];
 export type AvailabilityOverride = Database['public']['Tables']['availability_overrides']['Row'];
+export type BusinessProfile = Database['public']['Tables']['business_profiles']['Row'];
+export type BusinessProfileService = Database['public']['Tables']['business_profile_services']['Row'];
+export type BusinessProfileStaff = Database['public']['Tables']['business_profile_staff']['Row'];
 
 export type WorkspaceMemberWithUser = WorkspaceMember & {
   user: User;

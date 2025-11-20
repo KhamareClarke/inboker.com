@@ -40,6 +40,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
+      // First try to get own memberships (simpler query)
       const { data: members, error } = await supabase
         .from('workspace_members')
         .select(`
@@ -51,9 +52,11 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error('Error fetching workspaces:', error);
+        // If error, just set empty and continue - user might not have workspaces yet
         setWorkspaces([]);
         setWorkspace(null);
         setCurrentMember(null);
+        setLoading(false);
         return;
       }
 

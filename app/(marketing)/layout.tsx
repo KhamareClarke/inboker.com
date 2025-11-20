@@ -1,6 +1,5 @@
 import { SiteHeader } from '@/components/site/header';
 import { SiteFooter } from '@/components/site/footer';
-import { CookieBanner } from '@/components/site/cookie-banner';
 
 export default function MarketingLayout({
   children,
@@ -12,7 +11,6 @@ export default function MarketingLayout({
       <SiteHeader />
       <main className="min-h-screen">{children}</main>
       <SiteFooter />
-      <CookieBanner />
     </>
   );
 }
