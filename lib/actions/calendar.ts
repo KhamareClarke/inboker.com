@@ -169,7 +169,7 @@ export async function calculateAvailableSlots(
       workingHours = [{ start: override.start_time, end: override.end_time }];
     }
   } else if (shifts.length > 0) {
-    workingHours = shifts.map((s) => ({
+    workingHours = shifts.map((s: any) => ({
       start: s.start_time,
       end: s.end_time,
     }));
