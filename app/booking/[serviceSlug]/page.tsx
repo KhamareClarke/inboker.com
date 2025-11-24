@@ -117,7 +117,7 @@ export default function ServiceBookingPage() {
 
       // Then get the staff details
       if (assignments && assignments.length > 0) {
-        const staffIds = assignments.map(a => a.staff_id);
+        const staffIds = assignments.map((a: any) => a.staff_id);
         const { data: staffData, error: staffError } = await supabase
           .from('business_profile_staff')
           .select('*')
