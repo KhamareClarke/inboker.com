@@ -158,7 +158,7 @@ export async function calculateAvailableSlots(
 
   const availableSlots: string[] = [];
   const blockedTimes = new Set(
-    bookings.map((b) => format(parseISO(b.start_time), 'HH:mm'))
+    bookings.map((b: any) => format(parseISO(b.start_time), 'HH:mm'))
   );
 
   let workingHours: Array<{ start: string; end: string }> = [];
