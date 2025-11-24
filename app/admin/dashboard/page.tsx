@@ -267,7 +267,7 @@ export default function AdminDashboardPage() {
             if (reviewsError) {
               console.error('Error fetching reviews for business:', profile.id, reviewsError);
             } else if (reviewsData && reviewsData.length > 0) {
-              const totalRating = reviewsData.reduce((sum, r) => sum + (r.rating || 0), 0);
+              const totalRating = reviewsData.reduce((sum: number, r: any) => sum + (r.rating || 0), 0);
               avgRating = (totalRating / reviewsData.length).toFixed(1);
             }
           }
