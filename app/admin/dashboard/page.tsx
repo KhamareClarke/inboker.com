@@ -237,7 +237,7 @@ export default function AdminDashboardPage() {
           // Get monthly completed appointments (last 30 days)
           const thirtyDaysAgo = new Date();
           thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-          const monthlyCompleted = completed.filter(a => {
+          const monthlyCompleted = completed.filter((a: any) => {
             const completedDate = new Date(a.updated_at || a.start_time);
             return completedDate >= thirtyDaysAgo;
           });
