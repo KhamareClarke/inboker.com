@@ -83,7 +83,7 @@ export default function ServiceBookingPage() {
       }
 
       // Find service that matches the slug
-      const matchedService = servicesData.find(s => 
+      const matchedService = servicesData.find((s: any) => 
         generateServiceSlug(s.name) === serviceSlug
       );
 
