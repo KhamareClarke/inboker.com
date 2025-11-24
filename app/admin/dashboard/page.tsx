@@ -319,7 +319,7 @@ export default function AdminDashboardPage() {
 
       // Get bookings and reviews for each customer
       const customersWithStats = await Promise.all(
-        (customersData || []).map(async (customer) => {
+        (customersData || []).map(async (customer: any) => {
           // Get bookings
           const { data: bookings } = await supabase
             .from('business_profile_bookings')
