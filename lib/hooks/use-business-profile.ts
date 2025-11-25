@@ -67,7 +67,7 @@ export function useBusinessProfile() {
           throw new Error('User not authenticated. Please log in again.');
         }
         currentUser = session.user;
-        console.log('Found user from session:', currentUser.id);
+        console.log('Found user from session:', session.user.id);
       } catch (sessionErr: any) {
         console.error('Error getting session:', sessionErr);
         throw new Error('User not authenticated. Please log in again.');
@@ -153,7 +153,7 @@ export function useBusinessProfile() {
           throw new Error('User not authenticated. Please log in again.');
         }
         currentUser = session.user;
-        console.log('Found user from session:', currentUser.id);
+        console.log('Found user from session:', session.user.id);
       } catch (sessionErr: any) {
         console.error('Error getting session:', sessionErr);
         throw new Error('User not authenticated. Please log in again.');
