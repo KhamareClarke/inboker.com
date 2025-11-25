@@ -83,6 +83,10 @@ export function useBusinessProfile() {
           currentUser = sessionResult.data.session.user;
         }
         
+        if (!currentUser) {
+          throw new Error('User not authenticated. Please log in again.');
+        }
+        
         console.log('Found user from session:', currentUser.id);
       } catch (sessionErr: any) {
         console.error('Error getting session:', sessionErr);
@@ -192,6 +196,10 @@ export function useBusinessProfile() {
           currentUser = retryResult.data.session.user;
         } else {
           currentUser = sessionResult.data.session.user;
+        }
+        
+        if (!currentUser) {
+          throw new Error('User not authenticated. Please log in again.');
         }
         
         console.log('Found user from session:', currentUser.id);
