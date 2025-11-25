@@ -44,10 +44,10 @@ export default function SignupPage() {
       const role: UserRole = userType === 'business_owner' ? 'business_owner' : 'customer';
       console.log('🔄 Starting signup...');
       
-      // Add timeout to signup
+      // Increase timeout to 30 seconds to allow for database triggers
       const signupPromise = signUp(email, password, fullName, role);
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('TIMEOUT')), 10000)
+        setTimeout(() => reject(new Error('TIMEOUT')), 30000)
       );
       
       const result = await Promise.race([signupPromise, timeoutPromise]) as any;
@@ -60,9 +60,8 @@ export default function SignupPage() {
         setError('');
         setLoading(false);
         
-        // Show success message briefly, then redirect to login
-        alert('Account created successfully! Please login.');
-        window.location.href = '/login';
+        // Use replace instead of href to ensure page reloads and prevents back navigation
+        window.location.replace('/login?signup=success');
         return;
       }
       
@@ -73,11 +72,19 @@ export default function SignupPage() {
       console.error('❌ Signup error:', err);
       
       if (err.message === 'TIMEOUT') {
-        setError('Signup is taking too long. Please try again.');
+        // Even on timeout, the signup might have succeeded
+        // Check if user was created by trying to verify
+        setError('Signup is taking longer than expected. Your account may have been created. Please try logging in.');
+        setLoading(false);
+        
+        // Still redirect to login after a brief delay
+        setTimeout(() => {
+          window.location.replace('/login?signup=timeout');
+        }, 2000);
       } else {
         setError(err.message || 'Failed to create account');
+        setLoading(false);
       }
-      setLoading(false);
     }
   };
 

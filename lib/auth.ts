@@ -104,9 +104,9 @@ export async function signUp(
   // 1. Auto-confirm the email
   // 2. Create the user profile from metadata
   // So we don't need to manually create the profile here
-  // Just wait a moment for the trigger to complete
+  // Wait a bit longer for the trigger to complete (increased from 500ms to 2s)
   if (data.user) {
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 2000));
   }
 
   return data;
