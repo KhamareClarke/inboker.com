@@ -64,7 +64,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       setWorkspaces(workspacesList);
 
       const savedWorkspaceId = localStorage.getItem('currentWorkspaceId');
-      let selectedWorkspace = workspacesList.find(w => w.id === savedWorkspaceId);
+      let selectedWorkspace = workspacesList.find((w: any) => w.id === savedWorkspaceId);
 
       if (!selectedWorkspace && workspacesList.length > 0) {
         selectedWorkspace = workspacesList[0];
