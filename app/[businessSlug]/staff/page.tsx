@@ -468,7 +468,7 @@ export default function BusinessStaffPage() {
             <AssignServicesDialog
               staff={selectedStaff}
               services={services}
-              assignedServiceIds={selectedStaff?.assigned_services?.map(s => s.id) || []}
+              assignedServiceIds={selectedStaff?.assigned_services?.map((s: any) => s.id) || []}
               onAssign={handleAssignServices}
               onClose={() => {
                 setAssignDialogOpen(false);

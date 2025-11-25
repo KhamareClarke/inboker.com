@@ -231,7 +231,7 @@ export async function getClientsByPipelineStage(workspaceId: string) {
 
   if (error) throw error;
 
-  const grouped = data.reduce((acc, client) => {
+  const grouped = data.reduce((acc: any, client: any) => {
     const stage = client.pipeline_stage;
     if (!acc[stage]) {
       acc[stage] = [];

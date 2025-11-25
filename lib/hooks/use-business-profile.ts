@@ -109,7 +109,7 @@ export function useBusinessProfile() {
       );
 
       const { data, error: createError } = await Promise.race([
-        insertPromise.then(r => ({ type: 'success', data: r.data, error: r.error })),
+        insertPromise.then((r: any) => ({ type: 'success', data: r.data, error: r.error })),
         timeoutPromise.then(() => ({ type: 'timeout', data: null, error: { message: 'Operation timed out' } }))
       ]) as any;
 
@@ -182,7 +182,7 @@ export function useBusinessProfile() {
       );
 
       const { data, error: updateError } = await Promise.race([
-        updatePromise.then(r => ({ type: 'success', data: r.data, error: r.error })),
+        updatePromise.then((r: any) => ({ type: 'success', data: r.data, error: r.error })),
         timeoutPromise.then(() => ({ type: 'timeout', data: null, error: { message: 'Operation timed out' } }))
       ]) as any;
 

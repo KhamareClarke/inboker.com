@@ -160,7 +160,7 @@ export default function CustomerBookingsPage() {
       if (result.error) throw result.error;
 
       // Update local state
-      setBookings(bookings.map(b => 
+      setBookings(bookings.map((b: any) => 
         b.id === selectedBooking.id 
           ? { ...b, status: 'cancelled' }
           : b
@@ -268,7 +268,7 @@ export default function CustomerBookingsPage() {
       if (result.error) throw result.error;
 
       // Update local state
-      setBookings(bookings.map(b => 
+      setBookings(bookings.map((b: any) => 
         b.id === selectedBooking.id 
           ? { 
               ...b, 
@@ -427,11 +427,11 @@ export default function CustomerBookingsPage() {
   };
 
   const now = new Date();
-  const upcomingBookings = bookings.filter(b => {
+  const upcomingBookings = bookings.filter((b: any) => {
     const startTime = new Date(b.start_time);
     return startTime >= now && b.status !== 'cancelled' && b.status !== 'completed';
   });
-  const pastBookings = bookings.filter(b => {
+  const pastBookings = bookings.filter((b: any) => {
     const startTime = new Date(b.start_time);
     return startTime < now || b.status === 'completed' || b.status === 'cancelled';
   });

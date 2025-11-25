@@ -596,11 +596,11 @@ export default function CustomerDashboardPage() {
 
   const dismissNotification = (notificationId: string) => {
     setDismissedNotifications(prev => new Set(Array.from(prev).concat(notificationId)));
-    setNotifications(prev => prev.filter(n => n.id !== notificationId));
+    setNotifications(prev => prev.filter((n: any) => n.id !== notificationId));
   };
 
   const dismissAllNotifications = () => {
-    notifications.forEach(n => {
+    notifications.forEach((n: any) => {
       setDismissedNotifications(prev => new Set(Array.from(prev).concat(n.id)));
     });
     setNotifications([]);
@@ -769,7 +769,7 @@ export default function CustomerDashboardPage() {
   // Calculate metrics from bookings
   const now = new Date();
   // Upcoming bookings: future appointments that are pending or confirmed (not cancelled or completed)
-  const upcomingBookings = bookings.filter(b => {
+  const upcomingBookings = bookings.filter((b: any) => {
     const startTime = new Date(b.start_time);
     const isFuture = startTime >= now;
     const isActive = ['pending', 'confirmed'].includes(b.status);
@@ -787,7 +787,7 @@ export default function CustomerDashboardPage() {
   // Completed bookings: only those with status 'completed'
   const completedBookings = bookings.filter((b: any) => b.status === 'completed');
   const favoriteBookingsList = bookings.filter((b: any) => favoriteBookings.includes(b.id));
-  const favoriteServicesList = services.filter(s => favoriteServices.includes(s.id));
+  const favoriteServicesList = services.filter((s: any) => favoriteServices.includes(s.id));
   const totalFavorites = favoriteBookings.length + favoriteServices.length;
 
   // Don't block the entire page - show content even if services are loading

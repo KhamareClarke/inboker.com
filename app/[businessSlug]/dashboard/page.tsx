@@ -514,7 +514,7 @@ export default function BusinessDashboardPage() {
   };
 
   const dismissAllNotifications = () => {
-    notifications.forEach(n => {
+    notifications.forEach((n: any) => {
       setDismissedNotifications(prev => new Set(Array.from(prev).concat(n.id)));
     });
     setNotifications([]);
@@ -1117,7 +1117,7 @@ export default function BusinessDashboardPage() {
                   size="sm"
                   onClick={() => {
                     dismissAllNotifications();
-                    reviews.forEach(r => dismissReview(r.id));
+                    reviews.forEach((r: any) => dismissReview(r.id));
                   }}
                 >
                   Dismiss All
