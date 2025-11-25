@@ -28,7 +28,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  const loadUserProfile = async (userId: string, retryCount = 0) => {
+  const loadUserProfile = async (userId: string, retryCount = 0): Promise<void> => {
     try {
       console.log(`Loading user profile for ${userId} (attempt ${retryCount + 1})`);
       
