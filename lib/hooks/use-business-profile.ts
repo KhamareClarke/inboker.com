@@ -58,16 +58,32 @@ export function useBusinessProfile() {
     if (!currentUser) {
       console.log('User not found in auth context, checking session directly...');
       try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) {
-          console.error('Session error:', sessionError);
+        // Add timeout for mobile
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Session check timeout')), 10000)
+        );
+
+        const sessionResult = await Promise.race([sessionPromise, timeoutPromise]) as any;
+        
+        if (sessionResult.error) {
+          console.error('Session error:', sessionResult.error);
           throw new Error('User not authenticated. Please log in again.');
         }
-        if (!session?.user) {
-          throw new Error('User not authenticated. Please log in again.');
+        
+        if (!sessionResult.data?.session?.user) {
+          // Try one more time on mobile
+          await new Promise(r => setTimeout(r, 1000));
+          const retryResult = await supabase.auth.getSession();
+          if (!retryResult.data?.session?.user) {
+            throw new Error('User not authenticated. Please log in again.');
+          }
+          currentUser = retryResult.data.session.user;
+        } else {
+          currentUser = sessionResult.data.session.user;
         }
-        currentUser = session.user;
-        console.log('Found user from session:', session.user.id);
+        
+        console.log('Found user from session:', currentUser.id);
       } catch (sessionErr: any) {
         console.error('Error getting session:', sessionErr);
         throw new Error('User not authenticated. Please log in again.');
@@ -105,30 +121,39 @@ export function useBusinessProfile() {
         .single();
 
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Database operation timed out')), 20000)
+        setTimeout(() => reject(new Error('Database operation timed out')), 30000) // Increased to 30s for mobile
       );
 
-      const { data, error: createError } = await Promise.race([
+      const result = await Promise.race([
         insertPromise.then((r: any) => ({ type: 'success', data: r.data, error: r.error })),
         timeoutPromise.then(() => ({ type: 'timeout', data: null, error: { message: 'Operation timed out' } }))
       ]) as any;
 
-      if (createError) {
-        console.error('Supabase create error:', createError);
-        // Check if it's an auth error
-        if (createError.code === 'PGRST301' || createError.message?.includes('JWT') || createError.message?.includes('authentication')) {
-          throw new Error('Authentication expired. Please log in again.');
-        }
-        throw createError;
+      if (result.type === 'timeout') {
+        console.error('Create profile timeout');
+        throw new Error('Save operation timed out. Please check your connection and try again.');
       }
 
-      if (!data) {
+      if (result.error) {
+        console.error('Supabase create error:', result.error);
+        // Check if it's an auth error
+        if (result.error.code === 'PGRST301' || result.error.message?.includes('JWT') || result.error.message?.includes('authentication')) {
+          throw new Error('Authentication expired. Please log in again.');
+        }
+        // Provide more specific error messages
+        if (result.error.message?.includes('duplicate') || result.error.message?.includes('unique')) {
+          throw new Error('A business profile already exists for this account.');
+        }
+        throw new Error(result.error.message || 'Failed to save profile. Please try again.');
+      }
+
+      if (!result.data) {
         throw new Error('Failed to create profile. Please try again.');
       }
 
-      console.log('Business profile created successfully:', data.id);
-      setProfile(data);
-      return data;
+      console.log('Business profile created successfully:', result.data.id);
+      setProfile(result.data);
+      return result.data;
     } catch (err: any) {
       console.error('Error creating business profile:', err);
       setError(err.message || 'Failed to create business profile');
@@ -144,16 +169,32 @@ export function useBusinessProfile() {
     if (!currentUser) {
       console.log('User not found in auth context, checking session directly...');
       try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) {
-          console.error('Session error:', sessionError);
+        // Add timeout for mobile
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Session check timeout')), 10000)
+        );
+
+        const sessionResult = await Promise.race([sessionPromise, timeoutPromise]) as any;
+        
+        if (sessionResult.error) {
+          console.error('Session error:', sessionResult.error);
           throw new Error('User not authenticated. Please log in again.');
         }
-        if (!session?.user) {
-          throw new Error('User not authenticated. Please log in again.');
+        
+        if (!sessionResult.data?.session?.user) {
+          // Try one more time on mobile
+          await new Promise(r => setTimeout(r, 1000));
+          const retryResult = await supabase.auth.getSession();
+          if (!retryResult.data?.session?.user) {
+            throw new Error('User not authenticated. Please log in again.');
+          }
+          currentUser = retryResult.data.session.user;
+        } else {
+          currentUser = sessionResult.data.session.user;
         }
-        currentUser = session.user;
-        console.log('Found user from session:', session.user.id);
+        
+        console.log('Found user from session:', currentUser.id);
       } catch (sessionErr: any) {
         console.error('Error getting session:', sessionErr);
         throw new Error('User not authenticated. Please log in again.');
@@ -178,30 +219,36 @@ export function useBusinessProfile() {
         .single();
 
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Database operation timed out')), 20000)
+        setTimeout(() => reject(new Error('Database operation timed out')), 30000) // Increased to 30s for mobile
       );
 
-      const { data, error: updateError } = await Promise.race([
+      const result = await Promise.race([
         updatePromise.then((r: any) => ({ type: 'success', data: r.data, error: r.error })),
         timeoutPromise.then(() => ({ type: 'timeout', data: null, error: { message: 'Operation timed out' } }))
       ]) as any;
 
-      if (updateError) {
-        console.error('Supabase update error:', updateError);
-        // Check if it's an auth error
-        if (updateError.code === 'PGRST301' || updateError.message?.includes('JWT') || updateError.message?.includes('authentication')) {
-          throw new Error('Authentication expired. Please log in again.');
-        }
-        throw updateError;
+      if (result.type === 'timeout') {
+        console.error('Update profile timeout');
+        throw new Error('Save operation timed out. Please check your connection and try again.');
       }
 
-      if (!data) {
+      if (result.error) {
+        console.error('Supabase update error:', result.error);
+        // Check if it's an auth error
+        if (result.error.code === 'PGRST301' || result.error.message?.includes('JWT') || result.error.message?.includes('authentication')) {
+          throw new Error('Authentication expired. Please log in again.');
+        }
+        // Provide more specific error messages
+        throw new Error(result.error.message || 'Failed to save profile. Please try again.');
+      }
+
+      if (!result.data) {
         throw new Error('Failed to update profile. Please try again.');
       }
 
-      console.log('Business profile updated successfully:', data.id);
-      setProfile(data);
-      return data;
+      console.log('Business profile updated successfully:', result.data.id);
+      setProfile(result.data);
+      return result.data;
     } catch (err: any) {
       console.error('Error updating business profile:', err);
       setError(err.message || 'Failed to update business profile');

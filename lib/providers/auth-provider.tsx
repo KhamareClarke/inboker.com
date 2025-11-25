@@ -28,8 +28,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  const loadUserProfile = async (userId: string) => {
+  const loadUserProfile = async (userId: string, retryCount = 0) => {
     try {
+      console.log(`Loading user profile for ${userId} (attempt ${retryCount + 1})`);
+      
+      // First, ensure we have a valid session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.error('No session available for profile load');
+        if (retryCount < 2) {
+          await new Promise(r => setTimeout(r, 2000));
+          return loadUserProfile(userId, retryCount + 1);
+        }
+        setProfile(null);
+        return;
+      }
+
       const queryPromise = supabase
         .from('users')
         .select('*')
@@ -37,7 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .single();
 
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Profile query timeout')), 5000)
+        setTimeout(() => reject(new Error('Profile query timeout')), 15000) // Increased to 15s for mobile
       );
 
       const result = await Promise.race([
@@ -47,18 +61,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (result.type === 'timeout') {
         console.error('Profile query timeout');
+        // Retry up to 2 times on mobile if timeout
+        if (retryCount < 2) {
+          console.log('Retrying profile load...');
+          await new Promise(r => setTimeout(r, 2000));
+          return loadUserProfile(userId, retryCount + 1);
+        }
         setProfile(null);
         return;
       }
 
-      if (result.error || !result.data) {
+      if (result.error) {
+        console.error('Profile query error:', result.error);
+        // Retry up to 2 times on RLS errors (common on mobile)
+        if (retryCount < 2 && (result.error.code === 'PGRST301' || result.error.message?.includes('JWT') || result.error.message?.includes('authentication'))) {
+          console.log('Retrying profile load after auth error...');
+          await new Promise(r => setTimeout(r, 2000));
+          return loadUserProfile(userId, retryCount + 1);
+        }
         setProfile(null);
         return;
       }
 
+      if (!result.data) {
+        console.warn('No profile data returned');
+        setProfile(null);
+        return;
+      }
+
+      console.log('User profile loaded successfully:', result.data.full_name || result.data.email);
       setProfile(result.data as UserProfile);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error loading user profile:', err);
+      // Retry up to 2 times on unexpected errors
+      if (retryCount < 2) {
+        console.log('Retrying profile load after error...');
+        await new Promise(r => setTimeout(r, 2000));
+        return loadUserProfile(userId, retryCount + 1);
+      }
       setProfile(null);
     }
   };
@@ -66,13 +106,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const initAuth = async () => {
       try {
-        // Wait a moment for session to be available
-        await new Promise(r => setTimeout(r, 500));
+        // Wait a moment for session to be available (longer on mobile)
+        await new Promise(r => setTimeout(r, 1000));
         
-        // Add timeout to prevent hanging
+        // Add timeout to prevent hanging (longer on mobile)
         const sessionPromise = supabase.auth.getSession();
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Session timeout')), 5000)
+          setTimeout(() => reject(new Error('Session timeout')), 10000) // Increased to 10s for mobile
         );
 
         let sessionResult;
@@ -80,8 +120,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           sessionResult = await Promise.race([sessionPromise, timeoutPromise]) as any;
         } catch (err: any) {
           console.error('Session check timeout or error:', err);
-          // Continue with null session
-          sessionResult = { data: { session: null }, error: null };
+          // Try one more time on mobile
+          try {
+            await new Promise(r => setTimeout(r, 1000));
+            const retryResult = await supabase.auth.getSession();
+            sessionResult = retryResult;
+          } catch (retryErr) {
+            console.error('Session retry failed:', retryErr);
+            sessionResult = { data: { session: null }, error: null };
+          }
         }
 
         const session = sessionResult?.data?.session;
@@ -89,10 +136,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         if (session?.user) {
           try {
+            // Load profile with retry for mobile
             await loadUserProfile(session.user.id);
           } catch (profileErr) {
             console.error('Error loading user profile:', profileErr);
-            setProfile(null);
+            // Don't set profile to null immediately - try once more
+            try {
+              await new Promise(r => setTimeout(r, 2000));
+              await loadUserProfile(session.user.id);
+            } catch (retryErr) {
+              console.error('Profile retry failed:', retryErr);
+              setProfile(null);
+            }
           }
         } else {
           setProfile(null);

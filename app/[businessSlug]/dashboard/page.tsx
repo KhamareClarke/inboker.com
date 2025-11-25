@@ -28,7 +28,8 @@ export default function BusinessDashboardPage() {
   const [dismissedNotifications, setDismissedNotifications] = useState<Set<string>>(new Set());
   const [dismissedReviews, setDismissedReviews] = useState<Set<string>>(new Set());
   const [lastNotificationLoadTime, setLastNotificationLoadTime] = useState<Date | null>(null);
-  const userName = userProfile?.full_name || user?.email || 'User';
+  // Use email as fallback if profile hasn't loaded yet (common on mobile)
+  const userName = userProfile?.full_name || user?.email?.split('@')[0] || user?.email || 'User';
 
   useEffect(() => {
     if (businessSlug) {

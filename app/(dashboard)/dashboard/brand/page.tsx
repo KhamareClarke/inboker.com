@@ -210,9 +210,40 @@ export default function BrandProfilePage() {
       }, 1500);
     } catch (err: any) {
       console.error('Save error:', err);
+      console.error('Error stack:', err.stack);
+      console.error('Error details:', JSON.stringify(err, null, 2));
+      
+      // Provide more specific error messages
+      let errorMessage = err.message || 'Failed to save profile. Please try again.';
+      if (err.message?.includes('Authentication expired') || err.message?.includes('not authenticated')) {
+        errorMessage = 'Your session expired. Please refresh the page and try again.';
+      } else if (err.message?.includes('timeout') || err.message?.includes('timed out')) {
+        errorMessage = 'The request timed out. Please check your internet connection and try again.';
+      } else if (err.message?.includes('network') || err.message?.includes('fetch')) {
+        errorMessage = 'Network error. Please check your connection and try again.';
+      }
+      
       toast({
         title: 'Save failed',
-        description: err.message || 'Failed to save profile. Please try again.',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+      console.error('Error stack:', err.stack);
+      console.error('Error details:', JSON.stringify(err, null, 2));
+      
+      // Provide more specific error messages
+      let errorMessage = err.message || 'Failed to save profile. Please try again.';
+      if (err.message?.includes('Authentication expired') || err.message?.includes('not authenticated')) {
+        errorMessage = 'Your session expired. Please refresh the page and try again.';
+      } else if (err.message?.includes('timeout')) {
+        errorMessage = 'The request timed out. Please check your internet connection and try again.';
+      } else if (err.message?.includes('network') || err.message?.includes('fetch')) {
+        errorMessage = 'Network error. Please check your connection and try again.';
+      }
+      
+      toast({
+        title: 'Save failed',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {
