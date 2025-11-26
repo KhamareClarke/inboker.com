@@ -122,31 +122,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    // Safety timeout - always set loading to false after 10 seconds max (reduced from 20s)
+    // Safety timeout - always set loading to false after 5 seconds max (very fast)
     const safetyTimeout = setTimeout(() => {
       console.warn('Auth initialization safety timeout - forcing loading to false');
       setLoading(false);
-    }, 10000);
+    }, 5000);
 
     const initAuth = async () => {
       try {
         // Try getUser() first - it's often faster than getSession()
-        // Use shorter timeout (5s) for initial check
+        // Use very short timeout (3s) for initial check
         let userResult: any = null;
         try {
           const getUserPromise = supabase.auth.getUser();
           const getUserTimeout = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('GetUser timeout')), 5000)
+            setTimeout(() => reject(new Error('GetUser timeout')), 3000)
           );
           
           userResult = await Promise.race([getUserPromise, getUserTimeout]) as any;
         } catch (err: any) {
           console.warn('GetUser timeout or error, trying getSession:', err);
-          // Fallback to getSession with shorter timeout
+          // Fallback to getSession with very short timeout (2s)
           try {
             const sessionPromise = supabase.auth.getSession();
             const sessionTimeout = new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('Session timeout')), 5000)
+              setTimeout(() => reject(new Error('Session timeout')), 2000)
             );
             
             const sessionResult = await Promise.race([sessionPromise, sessionTimeout]) as any;
@@ -154,12 +154,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               userResult = { data: { user: sessionResult.data.session.user } };
             }
           } catch (sessionErr) {
-            console.warn('Both getUser and getSession failed:', sessionErr);
+            console.warn('Both getUser and getSession failed - proceeding without auth:', sessionErr);
+            // Don't block - set user to null and continue
+            userResult = null;
           }
         }
 
-        const user = userResult?.data?.user;
-        setUser(user ?? null);
+        const user = userResult?.data?.user ?? null;
+        setUser(user);
         
         // Set loading to false immediately after determining user state
         // Profile can load in background
@@ -174,6 +176,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (err) {
         console.error('Auth initialization error:', err);
+        // Don't block - set to null and continue
         setUser(null);
         setProfile(null);
       } finally {
