@@ -32,12 +32,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log(`Loading user profile for ${userId} (attempt ${retryCount + 1})`);
       
-      // First, ensure we have a valid session
-      const { data: { session } } = await supabase.auth.getSession();
+      // Quick session check with timeout - don't block too long
+      let session: any = null;
+      try {
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Session timeout')), 5000)
+        );
+        
+        const sessionResult = await Promise.race([
+          sessionPromise.then((r: any) => r.data?.session),
+          timeoutPromise.then(() => null)
+        ]) as any;
+        
+        session = sessionResult;
+      } catch (err) {
+        console.warn('Session check failed during profile load:', err);
+        // Continue anyway - might still work
+      }
+      
       if (!session) {
-        console.error('No session available for profile load');
-        if (retryCount < 2) {
-          await new Promise(r => setTimeout(r, 2000));
+        console.warn('No session available for profile load');
+        if (retryCount < 1) {
+          // Only retry once, and quickly
+          await new Promise(r => setTimeout(r, 1000));
           return loadUserProfile(userId, retryCount + 1);
         }
         setProfile(null);
@@ -104,29 +122,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    // Safety timeout - always set loading to false after 20 seconds max
+    const safetyTimeout = setTimeout(() => {
+      console.warn('Auth initialization safety timeout - forcing loading to false');
+      setLoading(false);
+    }, 20000);
+
     const initAuth = async () => {
       try {
-        // Wait a moment for session to be available (longer on mobile)
-        await new Promise(r => setTimeout(r, 1000));
-        
-        // Add timeout to prevent hanging (longer on mobile)
+        // Reduced initial wait - check session immediately
+        // Add timeout to prevent hanging (increased to 15s)
         const sessionPromise = supabase.auth.getSession();
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Session timeout')), 10000) // Increased to 10s for mobile
+          setTimeout(() => reject(new Error('Session timeout')), 15000)
         );
 
         let sessionResult;
         try {
           sessionResult = await Promise.race([sessionPromise, timeoutPromise]) as any;
         } catch (err: any) {
-          console.error('Session check timeout or error:', err);
-          // Try one more time on mobile
+          console.warn('Session check timeout or error:', err);
+          // If timeout, try a quick retry without waiting
           try {
-            await new Promise(r => setTimeout(r, 1000));
             const retryResult = await supabase.auth.getSession();
             sessionResult = retryResult;
           } catch (retryErr) {
-            console.error('Session retry failed:', retryErr);
+            console.warn('Session retry failed:', retryErr);
+            // Set to no session and continue - don't block
             sessionResult = { data: { session: null }, error: null };
           }
         }
@@ -134,21 +156,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const session = sessionResult?.data?.session;
         setUser(session?.user ?? null);
         
+        // Set loading to false immediately after determining user state
+        // Profile can load in background
         if (session?.user) {
-          try {
-            // Load profile with retry for mobile
-            await loadUserProfile(session.user.id);
-          } catch (profileErr) {
-            console.error('Error loading user profile:', profileErr);
-            // Don't set profile to null immediately - try once more
-            try {
-              await new Promise(r => setTimeout(r, 2000));
-              await loadUserProfile(session.user.id);
-            } catch (retryErr) {
-              console.error('Profile retry failed:', retryErr);
-              setProfile(null);
-            }
-          }
+          // Load profile in background - don't block on it
+          loadUserProfile(session.user.id).catch((profileErr) => {
+            console.warn('Profile load failed (non-blocking):', profileErr);
+            setProfile(null);
+          });
         } else {
           setProfile(null);
         }
@@ -157,6 +172,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
         setProfile(null);
       } finally {
+        // Always set loading to false quickly - don't wait for profile
+        clearTimeout(safetyTimeout);
         setLoading(false);
       }
     };
