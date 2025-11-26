@@ -122,31 +122,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    // Safety timeout - always set loading to false after 5 seconds max (very fast)
+    // Set loading to false immediately - don't block page rendering
+    // Auth will happen in background and update user state when ready
+    setLoading(false);
+    
+    // Safety timeout - always ensure loading is false after 2 seconds (backup)
     const safetyTimeout = setTimeout(() => {
-      console.warn('Auth initialization safety timeout - forcing loading to false');
       setLoading(false);
-    }, 5000);
+    }, 2000);
 
     const initAuth = async () => {
       try {
         // Try getUser() first - it's often faster than getSession()
-        // Use very short timeout (3s) for initial check
+        // Use very short timeout (2s) for initial check
         let userResult: any = null;
         try {
           const getUserPromise = supabase.auth.getUser();
           const getUserTimeout = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('GetUser timeout')), 3000)
+            setTimeout(() => reject(new Error('GetUser timeout')), 2000)
           );
           
           userResult = await Promise.race([getUserPromise, getUserTimeout]) as any;
         } catch (err: any) {
           console.warn('GetUser timeout or error, trying getSession:', err);
-          // Fallback to getSession with very short timeout (2s)
+          // Fallback to getSession with very short timeout (1.5s)
           try {
             const sessionPromise = supabase.auth.getSession();
             const sessionTimeout = new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('Session timeout')), 2000)
+              setTimeout(() => reject(new Error('Session timeout')), 1500)
             );
             
             const sessionResult = await Promise.race([sessionPromise, sessionTimeout]) as any;
@@ -163,8 +166,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const user = userResult?.data?.user ?? null;
         setUser(user);
         
-        // Set loading to false immediately after determining user state
-        // Profile can load in background
+        // Profile can load in background - don't block on it
         if (user) {
           // Load profile in background - don't block on it
           loadUserProfile(user.id).catch((profileErr) => {
@@ -180,12 +182,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
         setProfile(null);
       } finally {
-        // Always set loading to false quickly - don't wait for profile
+        // Ensure loading is always false
         clearTimeout(safetyTimeout);
         setLoading(false);
       }
     };
 
+    // Start auth in background - don't block
     initAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
