@@ -46,35 +46,27 @@ export default function CustomerDashboardPage() {
 
     if (user) {
       console.log('User authenticated:', user.email);
-      // Add a small delay to ensure auth state is fully set
-      const timer = setTimeout(() => {
-        console.log('Starting data load...');
-        loadAllServices();
-        loadCustomerBookings();
-        loadFavorites();
-        loadNotifications();
-      }, 100);
+      // Start loading immediately - no delay needed
+      console.log('Starting data load...');
+      loadAllServices();
+      loadCustomerBookings();
+      loadFavorites();
+      loadNotifications();
       
-      // Safety timeout - ensure loading states are cleared after 20 seconds
+      // Safety timeout - ensure loading states are cleared after 15 seconds (reduced from 20s)
       const safetyTimer = setTimeout(() => {
-        console.warn('Safety timeout: Force clearing loading states after 20 seconds');
-        if (loading) {
-          setLoading(false);
-        }
-        if (bookingsLoading) {
-          setBookingsLoading(false);
-        }
-        if (favoritesLoading) {
-          setFavoritesLoading(false);
-        }
-      }, 20000);
+        console.warn('Safety timeout: Force clearing loading states after 15 seconds');
+        setLoading(false);
+        setBookingsLoading(false);
+        setFavoritesLoading(false);
+      }, 15000);
       
       return () => {
-        clearTimeout(timer);
         clearTimeout(safetyTimer);
       };
     } else {
       console.log('User not authenticated');
+      // Clear all loading states immediately
       setLoading(false);
       setBookingsLoading(false);
       setFavoritesLoading(false);
@@ -144,12 +136,12 @@ export default function CustomerDashboardPage() {
         return;
       }
 
-      // Verify session with increased timeout (20 seconds)
+      // Verify session with timeout (8 seconds - reduced from 20s)
       let session: any = null;
       try {
         const sessionPromise = supabase.auth.getSession();
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Session timeout')), 20000)
+          setTimeout(() => reject(new Error('Session timeout')), 8000)
         );
         
         const result = await Promise.race([
@@ -195,7 +187,7 @@ export default function CustomerDashboardPage() {
             .order('created_at', { ascending: false });
 
           const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Timeout')), 10000)
+            setTimeout(() => reject(new Error('Timeout')), 8000)
           );
 
           const result = await Promise.race([
@@ -265,7 +257,7 @@ export default function CustomerDashboardPage() {
           .in('id', businessProfileIds);
 
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Timeout')), 10000)
+          setTimeout(() => reject(new Error('Timeout')), 8000)
         );
 
         const result = await Promise.race([
@@ -341,9 +333,9 @@ export default function CustomerDashboardPage() {
       setBookingsLoading(true);
       console.log('Loading customer bookings for:', user.email);
       
-      // Set timeout to force clear loading after 15 seconds
+      // Set timeout to force clear loading after 10 seconds (reduced from 15s)
       maxTimeout = setTimeout(() => {
-        console.warn('Force clearing bookings loading after 15 seconds');
+        console.warn('Force clearing bookings loading after 10 seconds');
         setBookingsLoading(false);
         setBookings(prev => {
           if (prev.length === 0) {
@@ -351,7 +343,7 @@ export default function CustomerDashboardPage() {
           }
           return prev;
         });
-      }, 15000);
+      }, 10000);
       
       // Load bookings with timeout
       let data: any = null;
@@ -379,7 +371,7 @@ export default function CustomerDashboardPage() {
           .order('start_time', { ascending: false });
 
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Timeout')), 10000)
+          setTimeout(() => reject(new Error('Timeout')), 8000)
         );
 
         const result = await Promise.race([
