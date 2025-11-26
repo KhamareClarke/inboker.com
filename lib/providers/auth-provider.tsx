@@ -122,45 +122,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    // Safety timeout - always set loading to false after 20 seconds max
+    // Safety timeout - always set loading to false after 10 seconds max (reduced from 20s)
     const safetyTimeout = setTimeout(() => {
       console.warn('Auth initialization safety timeout - forcing loading to false');
       setLoading(false);
-    }, 20000);
+    }, 10000);
 
     const initAuth = async () => {
       try {
-        // Reduced initial wait - check session immediately
-        // Add timeout to prevent hanging (increased to 15s)
-        const sessionPromise = supabase.auth.getSession();
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Session timeout')), 15000)
-        );
-
-        let sessionResult;
+        // Try getUser() first - it's often faster than getSession()
+        // Use shorter timeout (5s) for initial check
+        let userResult: any = null;
         try {
-          sessionResult = await Promise.race([sessionPromise, timeoutPromise]) as any;
+          const getUserPromise = supabase.auth.getUser();
+          const getUserTimeout = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('GetUser timeout')), 5000)
+          );
+          
+          userResult = await Promise.race([getUserPromise, getUserTimeout]) as any;
         } catch (err: any) {
-          console.warn('Session check timeout or error:', err);
-          // If timeout, try a quick retry without waiting
+          console.warn('GetUser timeout or error, trying getSession:', err);
+          // Fallback to getSession with shorter timeout
           try {
-            const retryResult = await supabase.auth.getSession();
-            sessionResult = retryResult;
-          } catch (retryErr) {
-            console.warn('Session retry failed:', retryErr);
-            // Set to no session and continue - don't block
-            sessionResult = { data: { session: null }, error: null };
+            const sessionPromise = supabase.auth.getSession();
+            const sessionTimeout = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Session timeout')), 5000)
+            );
+            
+            const sessionResult = await Promise.race([sessionPromise, sessionTimeout]) as any;
+            if (sessionResult?.data?.session) {
+              userResult = { data: { user: sessionResult.data.session.user } };
+            }
+          } catch (sessionErr) {
+            console.warn('Both getUser and getSession failed:', sessionErr);
           }
         }
 
-        const session = sessionResult?.data?.session;
-        setUser(session?.user ?? null);
+        const user = userResult?.data?.user;
+        setUser(user ?? null);
         
         // Set loading to false immediately after determining user state
         // Profile can load in background
-        if (session?.user) {
+        if (user) {
           // Load profile in background - don't block on it
-          loadUserProfile(session.user.id).catch((profileErr) => {
+          loadUserProfile(user.id).catch((profileErr) => {
             console.warn('Profile load failed (non-blocking):', profileErr);
             setProfile(null);
           });
