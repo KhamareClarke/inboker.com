@@ -54,14 +54,59 @@ export default function SignupPage() {
       
       console.log('✅ Signup result:', result);
       
-      // If signup succeeded (user was created), redirect to login
+      // If signup succeeded (user was created), auto-authenticate and redirect
       if (result && result.user) {
         console.log('✅ User created successfully!');
         setError('');
         setLoading(false);
         
-        // Use replace instead of href to ensure page reloads and prevents back navigation
-        window.location.replace('/login?signup=success');
+        // Check if session is already available from signup
+        let hasSession = result.session !== null && result.session !== undefined;
+        
+        // If no session from signup, try to sign in automatically
+        if (!hasSession) {
+          try {
+            console.log('🔄 No session from signup, auto-authenticating user...');
+            
+            // Sign in with the credentials they just used
+            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+              email: email.trim().toLowerCase(),
+              password: password,
+            });
+            
+            if (signInError) {
+              console.error('❌ Auto-login failed:', signInError);
+              // If auto-login fails, redirect to login page
+              window.location.replace('/login?signup=success');
+              return;
+            }
+            
+            console.log('✅ Auto-authentication successful!');
+            hasSession = true;
+          } catch (authErr: any) {
+            console.error('❌ Auto-authentication error:', authErr);
+            // If auto-authentication fails, redirect to login
+            window.location.replace('/login?signup=success');
+            return;
+          }
+        } else {
+          console.log('✅ Session already available from signup');
+        }
+        
+        // Wait a moment for session to be fully set
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Redirect based on role
+        if (role === 'customer') {
+          console.log('✅ Redirecting customer to /dashboard/customer');
+          window.location.replace('/dashboard/customer');
+        } else if (role === 'business_owner') {
+          console.log('✅ Redirecting business owner to /dashboard/business-owner');
+          window.location.replace('/dashboard/business-owner');
+        } else {
+          // Default to customer dashboard
+          window.location.replace('/dashboard/customer');
+        }
         return;
       }
       
