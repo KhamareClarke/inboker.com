@@ -134,12 +134,22 @@ export default function CustomerDashboardPage() {
         return;
       }
       
-      // Check if user is authenticated with timeout
+      // Check if user is authenticated - use auth context first, then verify with session
+      // If user is available from auth context, skip session check to avoid timeout
+      if (!user) {
+        console.error('No user from auth context');
+        setServices([]);
+        setLoading(false);
+        setServicesError('No active session. Please log in again.');
+        return;
+      }
+
+      // Verify session with increased timeout (20 seconds)
       let session: any = null;
       try {
         const sessionPromise = supabase.auth.getSession();
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Session timeout')), 5000)
+          setTimeout(() => reject(new Error('Session timeout')), 20000)
         );
         
         const result = await Promise.race([
@@ -148,34 +158,25 @@ export default function CustomerDashboardPage() {
         ]) as any;
 
         if (result.type === 'timeout') {
-          console.error('Session check timeout - this might indicate a network issue');
-          setServices([]);
-          setLoading(false);
-          setServicesError('Connection timeout: Unable to reach the server. Please check your internet connection.');
-          return;
-        }
-        
-        session = result.data?.session;
-      } catch (err: any) {
-        console.error('Error checking session:', err);
-        setServices([]);
-        setLoading(false);
-        if (err.message && err.message.includes('Failed to fetch')) {
-          setServicesError('Network error: Cannot connect to Supabase. Please check your internet connection.');
+          console.warn('Session check timeout - but user is authenticated, proceeding anyway');
+          // Don't fail completely - user is authenticated from context
+          // Just log a warning and proceed
         } else {
-          setServicesError('Error checking authentication: ' + (err.message || 'Unknown error'));
+          session = result.data?.session;
+          if (session) {
+            console.log('Session verified, user:', session.user.email);
+          } else {
+            console.warn('No session from getSession, but user exists in context - proceeding');
+          }
         }
-        return;
+      } catch (err: any) {
+        console.warn('Error checking session:', err);
+        // Don't fail completely if user is authenticated from context
+        // Just log the warning and proceed
+        if (err.message && err.message.includes('Failed to fetch')) {
+          console.warn('Network issue during session check, but user is authenticated - proceeding');
+        }
       }
-      
-      if (!session) {
-        console.error('No active session found');
-        setServices([]);
-        setLoading(false);
-        setServicesError('No active session. Please log in again.');
-        return;
-      }
-      console.log('Session found, user:', session.user.email);
       
       // Load services with timeout
       let servicesData: any = null;
