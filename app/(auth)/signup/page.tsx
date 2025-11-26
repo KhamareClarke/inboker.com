@@ -60,52 +60,66 @@ export default function SignupPage() {
         setError('');
         setLoading(false);
         
-        // Check if session is already available from signup
-        let hasSession = result.session !== null && result.session !== undefined;
-        
-        // If no session from signup, try to sign in automatically
-        if (!hasSession) {
-          try {
-            console.log('🔄 No session from signup, auto-authenticating user...');
-            
-            // Sign in with the credentials they just used
-            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-              email: email.trim().toLowerCase(),
-              password: password,
-            });
-            
-            if (signInError) {
-              console.error('❌ Auto-login failed:', signInError);
-              // If auto-login fails, redirect to login page
-              window.location.replace('/login?signup=success');
-              return;
-            }
-            
-            console.log('✅ Auto-authentication successful!');
-            hasSession = true;
-          } catch (authErr: any) {
-            console.error('❌ Auto-authentication error:', authErr);
-            // If auto-authentication fails, redirect to login
+        // Always auto-authenticate using the login API to ensure proper session handling
+        try {
+          console.log('🔄 Auto-authenticating user after signup...');
+          
+          // Use the login API route to ensure proper session handling
+          const loginResponse = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              email: email.trim().toLowerCase(), 
+              password: password 
+            }),
+          });
+          
+          const loginResult = await loginResponse.json();
+          
+          if (!loginResponse.ok || !loginResult.success) {
+            console.error('❌ Auto-login failed:', loginResult.error);
+            // If auto-login fails, redirect to login page
             window.location.replace('/login?signup=success');
             return;
           }
-        } else {
-          console.log('✅ Session already available from signup');
-        }
-        
-        // Wait a moment for session to be fully set
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Redirect based on role
-        if (role === 'customer') {
-          console.log('✅ Redirecting customer to /dashboard/customer');
-          window.location.replace('/dashboard/customer');
-        } else if (role === 'business_owner') {
-          console.log('✅ Redirecting business owner to /dashboard/business-owner');
-          window.location.replace('/dashboard/business-owner');
-        } else {
-          // Default to customer dashboard
-          window.location.replace('/dashboard/customer');
+          
+          console.log('✅ Auto-authentication successful!');
+          
+          // Set session using the tokens from login API
+          if (loginResult.session) {
+            await supabase.auth.setSession({
+              access_token: loginResult.session.access_token,
+              refresh_token: loginResult.session.refresh_token,
+            });
+            console.log('✅ Session set successfully');
+          }
+          
+          // Wait longer for session to be fully established and auth provider to update
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          // Redirect based on role from login response
+          const userRole = loginResult.role || role;
+          const businessSlug = loginResult.businessSlug;
+          
+          if (userRole === 'customer') {
+            console.log('✅ Redirecting customer to /dashboard/customer');
+            window.location.replace('/dashboard/customer');
+          } else if (userRole === 'business_owner') {
+            if (businessSlug) {
+              console.log('✅ Redirecting business owner to /' + businessSlug + '/dashboard');
+              window.location.replace(`/${businessSlug}/dashboard`);
+            } else {
+              console.log('✅ Redirecting business owner to /dashboard/business-owner');
+              window.location.replace('/dashboard/business-owner');
+            }
+          } else {
+            // Default to customer dashboard
+            window.location.replace('/dashboard/customer');
+          }
+        } catch (authErr: any) {
+          console.error('❌ Auto-authentication error:', authErr);
+          // If auto-authentication fails, redirect to login
+          window.location.replace('/login?signup=success');
         }
         return;
       }
