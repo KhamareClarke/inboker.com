@@ -101,20 +101,21 @@ export default function SignupPage() {
           const userRole = loginResult.role || role;
           const businessSlug = loginResult.businessSlug;
           
+          // Use href instead of replace to ensure full page reload and auth state refresh
           if (userRole === 'customer') {
             console.log('✅ Redirecting customer to /dashboard/customer');
-            window.location.replace('/dashboard/customer');
+            window.location.href = '/dashboard/customer';
           } else if (userRole === 'business_owner') {
             if (businessSlug) {
               console.log('✅ Redirecting business owner to /' + businessSlug + '/dashboard');
-              window.location.replace(`/${businessSlug}/dashboard`);
+              window.location.href = `/${businessSlug}/dashboard`;
             } else {
               console.log('✅ Redirecting business owner to /dashboard/business-owner');
-              window.location.replace('/dashboard/business-owner');
+              window.location.href = '/dashboard/business-owner';
             }
           } else {
             // Default to customer dashboard
-            window.location.replace('/dashboard/customer');
+            window.location.href = '/dashboard/customer';
           }
         } catch (authErr: any) {
           console.error('❌ Auto-authentication error:', authErr);
