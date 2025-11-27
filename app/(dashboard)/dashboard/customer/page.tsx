@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,7 @@ function generateServiceSlug(name: string): string {
 export default function CustomerDashboardPage() {
   const { profile, user, signOut, loading: authLoading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const userName = profile?.full_name || user?.email || 'User';
   const [services, setServices] = useState<(BusinessProfileService & { business_profile: BusinessProfile })[]>([]);
   const [bookings, setBookings] = useState<any[]>([]);
@@ -38,6 +39,9 @@ export default function CustomerDashboardPage() {
   const [servicesError, setServicesError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Check if this is a new signup - if so, wait a bit longer for auth to initialize
+    const isNewSignup = searchParams.get('signup') === 'success';
+    
     // Wait for auth to finish loading
     if (authLoading) {
       console.log('Auth still loading...');
@@ -46,12 +50,28 @@ export default function CustomerDashboardPage() {
 
     if (user) {
       console.log('User authenticated:', user.email);
-      // Start loading immediately - no delay needed
-      console.log('Starting data load...');
-      loadAllServices();
-      loadCustomerBookings();
-      loadFavorites();
-      loadNotifications();
+      
+      // If new signup, wait a bit longer for everything to initialize
+      if (isNewSignup) {
+        console.log('🆕 New signup detected, waiting for auth to fully initialize...');
+        setTimeout(() => {
+          console.log('Starting data load after signup...');
+          loadAllServices();
+          loadCustomerBookings();
+          loadFavorites();
+          loadNotifications();
+          
+          // Remove signup param from URL
+          router.replace('/dashboard/customer');
+        }, 1500);
+      } else {
+        // Start loading immediately - no delay needed
+        console.log('Starting data load...');
+        loadAllServices();
+        loadCustomerBookings();
+        loadFavorites();
+        loadNotifications();
+      }
       
       // Safety timeout - ensure loading states are cleared after 15 seconds (reduced from 20s)
       const safetyTimer = setTimeout(() => {
@@ -71,7 +91,7 @@ export default function CustomerDashboardPage() {
       setBookingsLoading(false);
       setFavoritesLoading(false);
     }
-  }, [user, authLoading]);
+  }, [user, authLoading, searchParams, router]);
 
   // Reload bookings when page gains focus (e.g., after returning from booking page)
   useEffect(() => {

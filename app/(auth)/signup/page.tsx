@@ -87,35 +87,58 @@ export default function SignupPage() {
           
           // Set session using the tokens from login API
           if (loginResult.session) {
-            await supabase.auth.setSession({
+            console.log('🔄 Setting session...');
+            const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
               access_token: loginResult.session.access_token,
               refresh_token: loginResult.session.refresh_token,
             });
-            console.log('✅ Session set successfully');
+            
+            if (sessionError) {
+              console.error('❌ Session set error:', sessionError);
+            } else {
+              console.log('✅ Session set successfully');
+            }
+            
+            // Verify session is actually set by checking it
+            let sessionVerified = false;
+            for (let i = 0; i < 5; i++) {
+              await new Promise(resolve => setTimeout(resolve, 500));
+              const { data: { session } } = await supabase.auth.getSession();
+              if (session && session.user) {
+                console.log('✅ Session verified, user:', session.user.email);
+                sessionVerified = true;
+                break;
+              }
+              console.log(`⏳ Waiting for session... (attempt ${i + 1}/5)`);
+            }
+            
+            if (!sessionVerified) {
+              console.warn('⚠️ Session not verified, but proceeding anyway');
+            }
           }
           
-          // Wait longer for session to be fully established and auth provider to update
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          // Wait a bit more for auth provider to initialize
+          await new Promise(resolve => setTimeout(resolve, 1000));
           
           // Redirect based on role from login response
           const userRole = loginResult.role || role;
           const businessSlug = loginResult.businessSlug;
           
-          // Use href instead of replace to ensure full page reload and auth state refresh
+          // Use href with a query param to force refresh
           if (userRole === 'customer') {
             console.log('✅ Redirecting customer to /dashboard/customer');
-            window.location.href = '/dashboard/customer';
+            window.location.href = '/dashboard/customer?signup=success';
           } else if (userRole === 'business_owner') {
             if (businessSlug) {
               console.log('✅ Redirecting business owner to /' + businessSlug + '/dashboard');
-              window.location.href = `/${businessSlug}/dashboard`;
+              window.location.href = `/${businessSlug}/dashboard?signup=success`;
             } else {
               console.log('✅ Redirecting business owner to /dashboard/business-owner');
-              window.location.href = '/dashboard/business-owner';
+              window.location.href = '/dashboard/business-owner?signup=success';
             }
           } else {
             // Default to customer dashboard
-            window.location.href = '/dashboard/customer';
+            window.location.href = '/dashboard/customer?signup=success';
           }
         } catch (authErr: any) {
           console.error('❌ Auto-authentication error:', authErr);
