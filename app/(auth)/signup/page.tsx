@@ -54,15 +54,92 @@ export default function SignupPage() {
       
       console.log('✅ Signup result:', result);
       
-      // If signup succeeded (user was created), redirect to login page
+      // If signup succeeded (user was created), auto-authenticate and redirect
       if (result && result.user) {
         console.log('✅ User created successfully!');
         setError('');
         setLoading(false);
         
-        // Simply redirect to login page - user can log in there
-        console.log('✅ Redirecting to login page...');
-        window.location.replace('/login?signup=success');
+        // Auto-authenticate using the login API with timeout
+        try {
+          console.log('🔄 Auto-authenticating user after signup...');
+          
+          // Use the login API route with timeout
+          const loginController = new AbortController();
+          const loginTimeout = setTimeout(() => loginController.abort(), 10000); // 10 second timeout
+          
+          const loginResponse = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              email: email.trim().toLowerCase(), 
+              password: password 
+            }),
+            signal: loginController.signal,
+          });
+          
+          clearTimeout(loginTimeout);
+          const loginResult = await loginResponse.json();
+          
+          if (!loginResponse.ok || !loginResult.success) {
+            console.error('❌ Auto-login failed:', loginResult.error);
+            // If auto-login fails, redirect to login page
+            window.location.replace('/login?signup=success');
+            return;
+          }
+          
+          console.log('✅ Auto-authentication successful!');
+          
+          // Set session using the tokens from login API
+          if (loginResult.session) {
+            console.log('🔄 Setting session...');
+            const { error: sessionError } = await supabase.auth.setSession({
+              access_token: loginResult.session.access_token,
+              refresh_token: loginResult.session.refresh_token,
+            });
+            
+            if (sessionError) {
+              console.error('❌ Session set error:', sessionError);
+              // Still redirect - session might work anyway
+            } else {
+              console.log('✅ Session set successfully');
+            }
+          }
+          
+          // Wait for session to be established and verify it
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          
+          // Quick verification that session exists
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) {
+            console.warn('⚠️ Session not found after set, but proceeding anyway');
+          } else {
+            console.log('✅ Session verified before redirect');
+          }
+          
+          // Redirect based on role from login response
+          const userRole = loginResult.role || role;
+          const businessSlug = loginResult.businessSlug;
+          
+          if (userRole === 'customer') {
+            console.log('✅ Redirecting customer to /dashboard/customer');
+            window.location.href = '/dashboard/customer?signup=success';
+          } else if (userRole === 'business_owner') {
+            if (businessSlug) {
+              console.log('✅ Redirecting business owner to /' + businessSlug + '/dashboard');
+              window.location.href = `/${businessSlug}/dashboard?signup=success`;
+            } else {
+              console.log('✅ Redirecting business owner to /dashboard/business-owner');
+              window.location.href = '/dashboard/business-owner?signup=success';
+            }
+          } else {
+            window.location.href = '/dashboard/customer?signup=success';
+          }
+        } catch (authErr: any) {
+          console.error('❌ Auto-authentication error:', authErr);
+          // If auto-authentication fails or times out, redirect to login
+          window.location.replace('/login?signup=success');
+        }
         return;
       }
       
