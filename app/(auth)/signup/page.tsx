@@ -60,74 +60,53 @@ export default function SignupPage() {
         setError('');
         setLoading(false);
         
-        // Auto-authenticate using the login API with timeout
+        // Auto-authenticate immediately after signup using direct Supabase signIn
         try {
           console.log('🔄 Auto-authenticating user after signup...');
           
-          // Use the login API route with timeout
-          const loginController = new AbortController();
-          const loginTimeout = setTimeout(() => loginController.abort(), 10000); // 10 second timeout
-          
-          const loginResponse = await fetch('/api/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              email: email.trim().toLowerCase(), 
-              password: password 
-            }),
-            signal: loginController.signal,
+          // Sign in directly with Supabase (faster and more reliable)
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email: email.trim().toLowerCase(),
+            password: password,
           });
           
-          clearTimeout(loginTimeout);
-          const loginResult = await loginResponse.json();
-          
-          if (!loginResponse.ok || !loginResult.success) {
-            console.error('❌ Auto-login failed:', loginResult.error);
+          if (signInError || !signInData.session) {
+            console.error('❌ Auto-login failed:', signInError);
             // If auto-login fails, redirect to login page
             window.location.replace('/login?signup=success');
             return;
           }
           
-          console.log('✅ Auto-authentication successful!');
+          console.log('✅ Auto-authentication successful! Session:', signInData.session.user.email);
           
-          // Set session using the tokens from login API
-          if (loginResult.session) {
-            console.log('🔄 Setting session...');
-            const { error: sessionError } = await supabase.auth.setSession({
-              access_token: loginResult.session.access_token,
-              refresh_token: loginResult.session.refresh_token,
-            });
-            
-            if (sessionError) {
-              console.error('❌ Session set error:', sessionError);
-              // Still redirect - session might work anyway
-            } else {
-              console.log('✅ Session set successfully');
-            }
-          }
+          // Wait for session to be fully established
+          await new Promise(resolve => setTimeout(resolve, 2000));
           
-          // Wait for session to be established and verify it
-          await new Promise(resolve => setTimeout(resolve, 1500));
+          // Get user role from profile
+          const { data: profile } = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', signInData.session.user.id)
+            .single();
           
-          // Quick verification that session exists
-          const { data: { session } } = await supabase.auth.getSession();
-          if (!session) {
-            console.warn('⚠️ Session not found after set, but proceeding anyway');
-          } else {
-            console.log('✅ Session verified before redirect');
-          }
+          const userRole = profile?.role || role;
+          console.log('✅ User role:', userRole);
           
-          // Redirect based on role from login response
-          const userRole = loginResult.role || role;
-          const businessSlug = loginResult.businessSlug;
-          
+          // Redirect based on role
           if (userRole === 'customer') {
             console.log('✅ Redirecting customer to /dashboard/customer');
             window.location.href = '/dashboard/customer?signup=success';
           } else if (userRole === 'business_owner') {
-            if (businessSlug) {
-              console.log('✅ Redirecting business owner to /' + businessSlug + '/dashboard');
-              window.location.href = `/${businessSlug}/dashboard?signup=success`;
+            // Check for business profile
+            const { data: businessProfile } = await supabase
+              .from('business_profiles')
+              .select('business_slug')
+              .eq('user_id', signInData.session.user.id)
+              .single();
+            
+            if (businessProfile?.business_slug) {
+              console.log('✅ Redirecting business owner to /' + businessProfile.business_slug + '/dashboard');
+              window.location.href = `/${businessProfile.business_slug}/dashboard?signup=success`;
             } else {
               console.log('✅ Redirecting business owner to /dashboard/business-owner');
               window.location.href = '/dashboard/business-owner?signup=success';
@@ -137,7 +116,7 @@ export default function SignupPage() {
           }
         } catch (authErr: any) {
           console.error('❌ Auto-authentication error:', authErr);
-          // If auto-authentication fails or times out, redirect to login
+          // If auto-authentication fails, redirect to login
           window.location.replace('/login?signup=success');
         }
         return;

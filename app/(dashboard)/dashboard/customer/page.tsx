@@ -55,23 +55,27 @@ export default function CustomerDashboardPage() {
       if (isNewSignup) {
         console.log('🆕 New signup detected, waiting for auth to fully initialize...');
         // Wait longer for auth provider to fully initialize after signup
-        setTimeout(() => {
+        const signupTimer = setTimeout(() => {
           console.log('Starting data load after signup...');
           // Verify user is still authenticated before loading
           if (user) {
+            console.log('✅ User authenticated, loading data...');
             loadAllServices();
             loadCustomerBookings();
             loadFavorites();
             loadNotifications();
+            
+            // Remove signup param from URL after a moment
+            setTimeout(() => {
+              router.replace('/dashboard/customer');
+            }, 1000);
           } else {
-            console.warn('User not authenticated after signup wait, reloading page...');
+            console.warn('⚠️ User not authenticated after signup wait, reloading page...');
             window.location.reload();
-            return;
           }
-          
-          // Remove signup param from URL
-          router.replace('/dashboard/customer');
-        }, 2500); // Increased from 1500ms to 2500ms
+        }, 3000); // Increased to 3 seconds to ensure auth is ready
+        
+        return () => clearTimeout(signupTimer);
       } else {
         // Start loading immediately - no delay needed
         console.log('Starting data load...');
