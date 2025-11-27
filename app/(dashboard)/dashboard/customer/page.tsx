@@ -50,6 +50,7 @@ export default function CustomerDashboardPage() {
 
     if (user) {
       console.log('User authenticated:', user.email);
+      console.log('Profile:', profile ? profile.full_name : 'No profile yet');
       
       // If new signup, wait a bit longer for everything to initialize
       if (isNewSignup) {
@@ -77,12 +78,18 @@ export default function CustomerDashboardPage() {
         
         return () => clearTimeout(signupTimer);
       } else {
-        // Start loading immediately - no delay needed
-        console.log('Starting data load...');
-        loadAllServices();
-        loadCustomerBookings();
-        loadFavorites();
-        loadNotifications();
+        // Start loading - wait a bit for profile/auth to fully initialize
+        console.log('Starting data load for logged in user...');
+        // Small delay to ensure everything is ready
+        const loadTimer = setTimeout(() => {
+          console.log('Loading data now...');
+          loadAllServices();
+          loadCustomerBookings();
+          loadFavorites();
+          loadNotifications();
+        }, 1000); // Wait 1 second for profile/auth to initialize
+        
+        return () => clearTimeout(loadTimer);
       }
       
       // Safety timeout - ensure loading states are cleared after 15 seconds (reduced from 20s)
@@ -103,7 +110,7 @@ export default function CustomerDashboardPage() {
       setBookingsLoading(false);
       setFavoritesLoading(false);
     }
-  }, [user, authLoading, searchParams, router]);
+  }, [user, profile, authLoading, searchParams, router]);
 
   // Reload bookings when page gains focus (e.g., after returning from booking page)
   useEffect(() => {

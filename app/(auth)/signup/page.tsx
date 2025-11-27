@@ -60,63 +60,50 @@ export default function SignupPage() {
         setError('');
         setLoading(false);
         
-        // Auto-authenticate immediately after signup using direct Supabase signIn
+        // Auto-authenticate with timeout - if it fails or takes too long, redirect to login
+        const authTimeout = setTimeout(() => {
+          console.warn('⏱️ Auto-authentication timeout - redirecting to login');
+          window.location.replace('/login?signup=success');
+        }, 8000); // 8 second timeout
+        
         try {
           console.log('🔄 Auto-authenticating user after signup...');
           
-          // Sign in directly with Supabase (faster and more reliable)
-          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          // Sign in directly with Supabase with timeout
+          const signInPromise = supabase.auth.signInWithPassword({
             email: email.trim().toLowerCase(),
             password: password,
           });
           
-          if (signInError || !signInData.session) {
-            console.error('❌ Auto-login failed:', signInError);
-            // If auto-login fails, redirect to login page
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('SignIn timeout')), 5000)
+          );
+          
+          const signInResult = await Promise.race([signInPromise, timeoutPromise]) as any;
+          clearTimeout(authTimeout);
+          
+          if (signInResult.error || !signInResult.data?.session) {
+            console.error('❌ Auto-login failed:', signInResult.error);
             window.location.replace('/login?signup=success');
             return;
           }
           
-          console.log('✅ Auto-authentication successful! Session:', signInData.session.user.email);
+          console.log('✅ Auto-authentication successful!');
           
-          // Wait for session to be fully established
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          // Quick redirect - don't wait too long
+          const userRole = role; // Use the role from signup
           
-          // Get user role from profile
-          const { data: profile } = await supabase
-            .from('users')
-            .select('role')
-            .eq('id', signInData.session.user.id)
-            .single();
-          
-          const userRole = profile?.role || role;
-          console.log('✅ User role:', userRole);
-          
-          // Redirect based on role
           if (userRole === 'customer') {
             console.log('✅ Redirecting customer to /dashboard/customer');
             window.location.href = '/dashboard/customer?signup=success';
-          } else if (userRole === 'business_owner') {
-            // Check for business profile
-            const { data: businessProfile } = await supabase
-              .from('business_profiles')
-              .select('business_slug')
-              .eq('user_id', signInData.session.user.id)
-              .single();
-            
-            if (businessProfile?.business_slug) {
-              console.log('✅ Redirecting business owner to /' + businessProfile.business_slug + '/dashboard');
-              window.location.href = `/${businessProfile.business_slug}/dashboard?signup=success`;
-            } else {
-              console.log('✅ Redirecting business owner to /dashboard/business-owner');
-              window.location.href = '/dashboard/business-owner?signup=success';
-            }
           } else {
-            window.location.href = '/dashboard/customer?signup=success';
+            console.log('✅ Redirecting business owner to /dashboard/business-owner');
+            window.location.href = '/dashboard/business-owner?signup=success';
           }
         } catch (authErr: any) {
+          clearTimeout(authTimeout);
           console.error('❌ Auto-authentication error:', authErr);
-          // If auto-authentication fails, redirect to login
+          // Always redirect to login if auto-auth fails
           window.location.replace('/login?signup=success');
         }
         return;
