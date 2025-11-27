@@ -54,97 +54,15 @@ export default function SignupPage() {
       
       console.log('✅ Signup result:', result);
       
-      // If signup succeeded (user was created), auto-authenticate and redirect
+      // If signup succeeded (user was created), redirect to login page
       if (result && result.user) {
         console.log('✅ User created successfully!');
         setError('');
         setLoading(false);
         
-        // Always auto-authenticate using the login API to ensure proper session handling
-        try {
-          console.log('🔄 Auto-authenticating user after signup...');
-          
-          // Use the login API route to ensure proper session handling
-          const loginResponse = await fetch('/api/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              email: email.trim().toLowerCase(), 
-              password: password 
-            }),
-          });
-          
-          const loginResult = await loginResponse.json();
-          
-          if (!loginResponse.ok || !loginResult.success) {
-            console.error('❌ Auto-login failed:', loginResult.error);
-            // If auto-login fails, redirect to login page
-            window.location.replace('/login?signup=success');
-            return;
-          }
-          
-          console.log('✅ Auto-authentication successful!');
-          
-          // Set session using the tokens from login API
-          if (loginResult.session) {
-            console.log('🔄 Setting session...');
-            const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
-              access_token: loginResult.session.access_token,
-              refresh_token: loginResult.session.refresh_token,
-            });
-            
-            if (sessionError) {
-              console.error('❌ Session set error:', sessionError);
-            } else {
-              console.log('✅ Session set successfully');
-            }
-            
-            // Verify session is actually set by checking it
-            let sessionVerified = false;
-            for (let i = 0; i < 5; i++) {
-              await new Promise(resolve => setTimeout(resolve, 500));
-              const { data: { session } } = await supabase.auth.getSession();
-              if (session && session.user) {
-                console.log('✅ Session verified, user:', session.user.email);
-                sessionVerified = true;
-                break;
-              }
-              console.log(`⏳ Waiting for session... (attempt ${i + 1}/5)`);
-            }
-            
-            if (!sessionVerified) {
-              console.warn('⚠️ Session not verified, but proceeding anyway');
-            }
-          }
-          
-          // Wait a bit more for auth provider to initialize
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          // Redirect based on role from login response
-          const userRole = loginResult.role || role;
-          const businessSlug = loginResult.businessSlug;
-          
-          // Use href with a query param to force refresh
-          if (userRole === 'customer') {
-            console.log('✅ Redirecting customer to /dashboard/customer');
-            window.location.href = '/dashboard/customer?signup=success';
-          } else if (userRole === 'business_owner') {
-            if (businessSlug) {
-              console.log('✅ Redirecting business owner to /' + businessSlug + '/dashboard');
-              window.location.href = `/${businessSlug}/dashboard?signup=success`;
-            } else {
-              console.log('✅ Redirecting business owner to /dashboard/business-owner');
-              window.location.href = '/dashboard/business-owner?signup=success';
-            }
-          } else {
-            // Default to customer dashboard
-            window.location.href = '/dashboard/customer?signup=success';
-          }
-        } catch (authErr: any) {
-          console.error('❌ Auto-authentication error:', authErr);
-          // If auto-authentication fails, redirect to login
-          window.location.replace('/login?signup=success');
-        }
+        // Simply redirect to login page - user can log in there
+        console.log('✅ Redirecting to login page...');
+        window.location.replace('/login?signup=success');
         return;
       }
       
@@ -156,14 +74,12 @@ export default function SignupPage() {
       
       if (err.message === 'TIMEOUT') {
         // Even on timeout, the signup might have succeeded
-        // Check if user was created by trying to verify
-        setError('Signup is taking longer than expected. Your account may have been created. Please try logging in.');
+        setError('');
         setLoading(false);
         
-        // Still redirect to login after a brief delay
-        setTimeout(() => {
-          window.location.replace('/login?signup=timeout');
-        }, 2000);
+        // Redirect to login immediately - user can try logging in
+        console.log('⚠️ Signup timeout - redirecting to login');
+        window.location.replace('/login?signup=timeout');
       } else {
         setError(err.message || 'Failed to create account');
         setLoading(false);
