@@ -59,33 +59,14 @@ export default function LoginPage() {
       if (result.success && result.session) {
         console.log('✅ Login successful, setting session...');
         
-        // Set session
-        console.log('🔄 Setting session...');
-        const { error: sessionError } = await supabase.auth.setSession({
-          access_token: result.session.access_token,
-          refresh_token: result.session.refresh_token,
-        });
-
-        if (sessionError) {
-          console.error('❌ Session set error:', sessionError);
-          setError('Failed to set session. Please try again.');
-          setLoading(false);
-          return;
-        }
-        
-        console.log('✅ Session set successfully');
-        
-        // Wait briefly for cookies to be set (don't verify with getSession as it may timeout)
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Get role and business slug from login response
+        // Get role and business slug from login response first
         const role = result.role || 'business_owner';
         const businessSlug = result.businessSlug;
         
         console.log('✅ User role from login:', role);
         console.log('✅ Business slug:', businessSlug);
         
-        // Redirect immediately - auth provider will handle session on next page
+        // Determine redirect URL
         let redirectUrl = '/dashboard';
         if (role === 'customer') {
           redirectUrl = '/dashboard/customer';
@@ -103,8 +84,47 @@ export default function LoginPage() {
           console.log('✅ Redirecting admin to /admin/dashboard');
         }
         
-        // Use window.location.replace for immediate redirect
-        window.location.replace(redirectUrl);
+        // Try setSession with a short timeout - if it hangs, we'll redirect anyway
+        console.log('🔄 Setting session...');
+        let sessionSet = false;
+        
+        const setSessionPromise = supabase.auth.setSession({
+          access_token: result.session.access_token,
+          refresh_token: result.session.refresh_token,
+        });
+        
+        // Race setSession against a timeout
+        const sessionTimeout = new Promise((resolve) => {
+          setTimeout(() => {
+            if (!sessionSet) {
+              console.warn('⚠️ setSession timeout, redirecting anyway');
+              resolve({ timeout: true });
+            }
+          }, 2000); // 2 second timeout
+        });
+        
+        Promise.race([setSessionPromise, sessionTimeout])
+          .then((sessionResult: any) => {
+            sessionSet = true;
+            if (sessionResult?.timeout) {
+              console.warn('⚠️ Session set timed out, but redirecting');
+            } else if (sessionResult?.error) {
+              console.error('❌ Session set error (non-blocking):', sessionResult.error);
+            } else {
+              console.log('✅ Session set successfully');
+            }
+          })
+          .catch((err) => {
+            sessionSet = true;
+            console.warn('⚠️ Session set error (non-blocking):', err);
+          });
+        
+        // Redirect after a short delay (don't wait for setSession)
+        // The auth provider will handle session detection on the next page
+        setTimeout(() => {
+          console.log('🔄 Redirecting to:', redirectUrl);
+          window.location.replace(redirectUrl);
+        }, 500);
         return;
       }
 
