@@ -133,54 +133,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const initAuth = async () => {
       try {
-        // Try getUser() first - it's often faster than getSession()
-        // Use very short timeout (2s) for initial check
+        // Try getSession() first - it's more reliable than getUser()
+        // Use longer timeout (5s) to allow for slower connections
         let userResult: any = null;
         try {
-          const getUserPromise = supabase.auth.getUser();
-          const getUserTimeout = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('GetUser timeout')), 2000)
+          const sessionPromise = supabase.auth.getSession();
+          const sessionTimeout = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Session timeout')), 5000)
           );
           
-          userResult = await Promise.race([getUserPromise, getUserTimeout]) as any;
-        } catch (err: any) {
-          console.warn('GetUser timeout or error, trying getSession:', err);
-          // Fallback to getSession with very short timeout (1.5s)
+          const sessionResult = await Promise.race([sessionPromise, sessionTimeout]) as any;
+          if (sessionResult?.data?.session) {
+            userResult = { data: { user: sessionResult.data.session.user } };
+            console.log('✅ Session found in initAuth:', sessionResult.data.session.user.email);
+          }
+        } catch (sessionErr: any) {
+          console.warn('GetSession timeout or error, trying getUser:', sessionErr);
+          // Fallback to getUser with longer timeout (4s)
           try {
-            const sessionPromise = supabase.auth.getSession();
-            const sessionTimeout = new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('Session timeout')), 1500)
+            const getUserPromise = supabase.auth.getUser();
+            const getUserTimeout = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('GetUser timeout')), 4000)
             );
             
-            const sessionResult = await Promise.race([sessionPromise, sessionTimeout]) as any;
-            if (sessionResult?.data?.session) {
-              userResult = { data: { user: sessionResult.data.session.user } };
+            userResult = await Promise.race([getUserPromise, getUserTimeout]) as any;
+            if (userResult?.data?.user) {
+              console.log('✅ User found via getUser:', userResult.data.user.email);
             }
-          } catch (sessionErr) {
-            console.warn('Both getUser and getSession failed - proceeding without auth:', sessionErr);
-            // Don't block - set user to null and continue
+          } catch (getUserErr) {
+            console.warn('Both getSession and getUser failed - will rely on onAuthStateChange:', getUserErr);
+            // Don't set user to null yet - onAuthStateChange might fire
             userResult = null;
           }
         }
 
         const user = userResult?.data?.user ?? null;
-        setUser(user);
-        
-        // Profile can load in background - don't block on it
         if (user) {
-          // Load profile in background - don't block on it
+          setUser(user);
+          // Load profile in background
           loadUserProfile(user.id).catch((profileErr) => {
             console.warn('Profile load failed (non-blocking):', profileErr);
             setProfile(null);
           });
         } else {
-          setProfile(null);
+          // Don't set user to null immediately - wait for onAuthStateChange
+          console.log('⏳ No user found in init, waiting for onAuthStateChange...');
         }
       } catch (err) {
         console.error('Auth initialization error:', err);
-        // Don't block - set to null and continue
-        setUser(null);
-        setProfile(null);
+        // Don't block - but don't set user to null yet
       } finally {
         // Ensure loading is always false
         clearTimeout(safetyTimeout);
@@ -192,12 +193,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event: any, session: any) => {
-        setUser(session?.user ?? null);
+      async (event: any, session: any) => {
+        console.log('🔄 Auth state changed:', event, session?.user?.email || 'no user');
         
         if (session?.user) {
-          await loadUserProfile(session.user.id);
+          console.log('✅ Setting user from onAuthStateChange:', session.user.email);
+          setUser(session.user);
+          // Load profile
+          loadUserProfile(session.user.id).catch((profileErr) => {
+            console.warn('Profile load failed in onAuthStateChange:', profileErr);
+            setProfile(null);
+          });
         } else {
+          console.log('❌ No session in onAuthStateChange');
+          setUser(null);
           setProfile(null);
         }
         

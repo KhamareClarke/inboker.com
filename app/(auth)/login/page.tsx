@@ -50,21 +50,28 @@ export default function LoginPage() {
       if (result.success && result.session) {
         console.log('✅ Login successful, setting session...');
         
-        // Set session - use a longer timeout
-        const setSessionPromise = supabase.auth.setSession({
+        // Set session and wait for it to be established
+        console.log('🔄 Setting session...');
+        const { error: sessionError } = await supabase.auth.setSession({
           access_token: result.session.access_token,
           refresh_token: result.session.refresh_token,
         });
 
-        const sessionTimeout = new Promise((resolve) => 
-          setTimeout(() => resolve({ success: false }), 3000)
-        );
-
-        try {
-          await Promise.race([setSessionPromise, sessionTimeout]);
-          console.log('✅ Session set (or timeout)');
-        } catch (sessionErr) {
-          console.warn('Session set warning:', sessionErr);
+        if (sessionError) {
+          console.error('❌ Session set error:', sessionError);
+        } else {
+          console.log('✅ Session set successfully');
+        }
+        
+        // Wait for session to be verified
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        // Verify session exists
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          console.log('✅ Session verified:', session.user.email);
+        } else {
+          console.warn('⚠️ Session not found after set, but proceeding');
         }
         
         // Get role and business slug from login response
