@@ -59,7 +59,7 @@ export default function LoginPage() {
       if (result.success && result.session) {
         console.log('✅ Login successful, setting session...');
         
-        // Set session and wait for it to be established
+        // Set session
         console.log('🔄 Setting session...');
         const { error: sessionError } = await supabase.auth.setSession({
           access_token: result.session.access_token,
@@ -68,20 +68,15 @@ export default function LoginPage() {
 
         if (sessionError) {
           console.error('❌ Session set error:', sessionError);
-        } else {
-          console.log('✅ Session set successfully');
+          setError('Failed to set session. Please try again.');
+          setLoading(false);
+          return;
         }
         
-        // Wait for session to be verified
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        console.log('✅ Session set successfully');
         
-        // Verify session exists
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          console.log('✅ Session verified:', session.user.email);
-        } else {
-          console.warn('⚠️ Session not found after set, but proceeding');
-        }
+        // Wait briefly for cookies to be set (don't verify with getSession as it may timeout)
+        await new Promise(resolve => setTimeout(resolve, 500));
         
         // Get role and business slug from login response
         const role = result.role || 'business_owner';
@@ -90,26 +85,26 @@ export default function LoginPage() {
         console.log('✅ User role from login:', role);
         console.log('✅ Business slug:', businessSlug);
         
-        // Redirect based on role
+        // Redirect immediately - auth provider will handle session on next page
+        let redirectUrl = '/dashboard';
         if (role === 'customer') {
+          redirectUrl = '/dashboard/customer';
           console.log('✅ Redirecting customer to /dashboard/customer');
-          window.location.href = '/dashboard/customer';
         } else if (role === 'business_owner') {
-          // If business owner has a business profile, redirect to business dashboard
           if (businessSlug) {
+            redirectUrl = `/${businessSlug}/dashboard`;
             console.log('✅ Redirecting business owner to /' + businessSlug + '/dashboard');
-            window.location.href = `/${businessSlug}/dashboard`;
           } else {
-            console.log('✅ Redirecting business owner to /dashboard/business-owner (no profile)');
-            window.location.href = '/dashboard/business-owner';
+            redirectUrl = '/dashboard/business-owner';
+            console.log('✅ Redirecting business owner to /dashboard/business-owner');
           }
         } else if (role === 'admin') {
-          console.log('✅ Redirecting admin to /admin');
-          window.location.href = '/admin';
-        } else {
-          console.log('⚠️ Unknown role, defaulting to business owner');
-          window.location.href = '/dashboard/business-owner';
+          redirectUrl = '/admin/dashboard';
+          console.log('✅ Redirecting admin to /admin/dashboard');
         }
+        
+        // Use window.location.replace for immediate redirect
+        window.location.replace(redirectUrl);
         return;
       }
 
