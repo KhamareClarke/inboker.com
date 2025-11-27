@@ -6,7 +6,7 @@ export async function middleware(req: NextRequest) {
   const res = NextResponse.next();
   const supabase = createMiddlewareClient({ req, res });
 
-  // Check for session in multiple ways
+  // Check for session
   let session = null;
   
   try {
@@ -14,16 +14,6 @@ export async function middleware(req: NextRequest) {
     session = sessionData.data?.session;
   } catch (e) {
     console.error('Middleware session error:', e);
-  }
-  
-  // If no session, check cookie directly
-  if (!session) {
-    const authToken = req.cookies.get('sb-access-token')?.value || 
-                     req.cookies.get('sb-' + process.env.NEXT_PUBLIC_SUPABASE_URL?.split('//')[1]?.split('.')[0] + '-auth-token')?.value;
-    if (authToken) {
-      // Token exists, allow access (session might be valid)
-      session = { user: {} } as any; // Temporary bypass
-    }
   }
 
   const isAuthPage = req.nextUrl.pathname.startsWith('/login') ||
@@ -39,11 +29,10 @@ export async function middleware(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
   const hasAuthToken = authHeader?.startsWith('Bearer ');
   
-  // TEMPORARILY: Allow dashboard access - session persistence issue
-  // TODO: Fix session cookie persistence
+  // Protect dashboard and admin routes - require authentication
   if (!session && (isDashboard || isAdminRoute)) {
-    // Allow access for now - session will be checked on the page
-    return res;
+    // Redirect unauthenticated users to login
+    return NextResponse.redirect(new URL('/login', req.url));
   }
 
   // If user has session, allow access to dashboard

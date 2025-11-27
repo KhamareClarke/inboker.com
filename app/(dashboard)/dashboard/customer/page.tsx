@@ -104,11 +104,13 @@ export default function CustomerDashboardPage() {
         clearTimeout(safetyTimer);
       };
     } else {
-      console.log('User not authenticated');
+      console.log('User not authenticated - redirecting to login');
       // Clear all loading states immediately
       setLoading(false);
       setBookingsLoading(false);
       setFavoritesLoading(false);
+      // Redirect to login if not authenticated
+      router.replace('/login');
     }
   }, [user, profile, authLoading, searchParams, router]);
 

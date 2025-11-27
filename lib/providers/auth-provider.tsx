@@ -122,24 +122,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    // Set loading to false immediately - don't block page rendering
-    // Auth will happen in background and update user state when ready
-    setLoading(false);
+    // Set loading to false after a short delay to allow auth check
+    let loadingTimeout: NodeJS.Timeout;
     
-    // Safety timeout - always ensure loading is false after 2 seconds (backup)
-    const safetyTimeout = setTimeout(() => {
-      setLoading(false);
-    }, 2000);
-
     const initAuth = async () => {
       try {
         // Try getSession() first - it's more reliable than getUser()
-        // Use longer timeout (5s) to allow for slower connections
+        // Use shorter timeout (3s) to avoid long waits
         let userResult: any = null;
         try {
           const sessionPromise = supabase.auth.getSession();
           const sessionTimeout = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Session timeout')), 5000)
+            setTimeout(() => reject(new Error('Session timeout')), 3000)
           );
           
           const sessionResult = await Promise.race([sessionPromise, sessionTimeout]) as any;
@@ -149,11 +143,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         } catch (sessionErr: any) {
           console.warn('GetSession timeout or error, trying getUser:', sessionErr);
-          // Fallback to getUser with longer timeout (4s)
+          // Fallback to getUser with shorter timeout (2s)
           try {
             const getUserPromise = supabase.auth.getUser();
             const getUserTimeout = new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('GetUser timeout')), 4000)
+              setTimeout(() => reject(new Error('GetUser timeout')), 2000)
             );
             
             userResult = await Promise.race([getUserPromise, getUserTimeout]) as any;
@@ -162,7 +156,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
           } catch (getUserErr) {
             console.warn('Both getSession and getUser failed - will rely on onAuthStateChange:', getUserErr);
-            // Don't set user to null yet - onAuthStateChange might fire
+            // Set user to null if both fail - don't wait indefinitely
             userResult = null;
           }
         }
@@ -176,20 +170,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setProfile(null);
           });
         } else {
-          // Don't set user to null immediately - wait for onAuthStateChange
-          console.log('⏳ No user found in init, waiting for onAuthStateChange...');
+          // No user found - set to null immediately
+          setUser(null);
+          setProfile(null);
+          console.log('⏳ No user found in init');
         }
       } catch (err) {
         console.error('Auth initialization error:', err);
-        // Don't block - but don't set user to null yet
+        // On error, assume no user
+        setUser(null);
+        setProfile(null);
       } finally {
-        // Ensure loading is always false
-        clearTimeout(safetyTimeout);
+        // Always set loading to false after auth check
         setLoading(false);
+        if (loadingTimeout) clearTimeout(loadingTimeout);
       }
     };
 
-    // Start auth in background - don't block
+    // Set a safety timeout to ensure loading is false after max 2 seconds
+    loadingTimeout = setTimeout(() => {
+      setLoading(false);
+    }, 2000);
+
+    // Start auth check
     initAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(

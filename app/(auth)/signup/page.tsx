@@ -90,16 +90,9 @@ export default function SignupPage() {
           
           console.log('✅ Auto-authentication successful!');
           
-          // Quick redirect - don't wait too long
-          const userRole = role; // Use the role from signup
-          
-          if (userRole === 'customer') {
-            console.log('✅ Redirecting customer to /dashboard/customer');
-            window.location.href = '/dashboard/customer?signup=success';
-          } else {
-            console.log('✅ Redirecting business owner to /dashboard/business-owner');
-            window.location.href = '/dashboard/business-owner?signup=success';
-          }
+          // Always redirect to login page after signup - user should log in manually
+          console.log('✅ Redirecting to login page after signup');
+          window.location.replace('/login?signup=success');
         } catch (authErr: any) {
           clearTimeout(authTimeout);
           console.error('❌ Auto-authentication error:', authErr);

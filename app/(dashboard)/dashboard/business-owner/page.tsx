@@ -11,7 +11,7 @@ import { useAuth } from '@/lib/providers/auth-provider';
 import { useBusinessProfile } from '@/lib/hooks/use-business-profile';
 
 export default function BusinessOwnerDashboardPage() {
-  const { profile, user, signOut } = useAuth();
+  const { profile, user, signOut, loading: authLoading } = useAuth();
   const { profile: businessProfile, loading: businessProfileLoading } = useBusinessProfile();
   const router = useRouter();
   const userName = profile?.full_name || user?.email || 'User';
@@ -26,15 +26,23 @@ export default function BusinessOwnerDashboardPage() {
       .trim();
   };
 
+  // Redirect unauthenticated users to login
+  useEffect(() => {
+    if (!authLoading && !user) {
+      console.log('User not authenticated - redirecting to login');
+      router.replace('/login');
+    }
+  }, [user, authLoading, router]);
+
   // Redirect to business-specific dashboard if business profile exists
   useEffect(() => {
-    if (!businessProfileLoading && businessProfile) {
+    if (!businessProfileLoading && businessProfile && user) {
       const slug = businessProfile.business_slug || generateSlug(businessProfile.business_name);
       if (slug) {
         router.replace(`/${slug}/dashboard`);
       }
     }
-  }, [businessProfile, businessProfileLoading, router]);
+  }, [businessProfile, businessProfileLoading, user, router]);
 
   // Show loading while checking for business profile
   if (businessProfileLoading) {

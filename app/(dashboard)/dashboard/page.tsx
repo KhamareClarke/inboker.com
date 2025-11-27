@@ -12,9 +12,17 @@ export default function DashboardPage() {
   const router = useRouter();
   const userName = profile?.full_name || user?.email || 'User';
 
+  // Redirect unauthenticated users to login
+  useEffect(() => {
+    if (!loading && !user) {
+      console.log('User not authenticated - redirecting to login');
+      router.replace('/login');
+    }
+  }, [user, loading, router]);
+
   // Redirect customers to their dashboard, business owners to theirs
   useEffect(() => {
-    if (!loading && role) {
+    if (!loading && role && user) {
       if (role === 'customer') {
         router.replace('/dashboard/customer');
       } else if (role === 'business_owner') {
@@ -23,7 +31,7 @@ export default function DashboardPage() {
         router.replace('/admin/dashboard');
       }
     }
-  }, [role, loading, router]);
+  }, [role, loading, user, router]);
   const stats = [
     {
       title: 'Total Bookings',
