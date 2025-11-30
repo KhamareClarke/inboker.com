@@ -63,8 +63,21 @@ export default function LoginPage() {
 
       console.log('✅ Login successful, session created automatically');
       
-      // Wait a moment for session to be persisted
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Verify session is set and wait for it to be fully persisted
+      let sessionVerified = false;
+      for (let i = 0; i < 5; i++) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session && session.user) {
+          console.log('✅ Session verified on attempt', i + 1);
+          sessionVerified = true;
+          break;
+        }
+      }
+      
+      if (!sessionVerified) {
+        console.warn('⚠️ Session not verified after multiple attempts, but proceeding');
+      }
       
       // Get user role from database
       let role = 'business_owner';
@@ -117,9 +130,12 @@ export default function LoginPage() {
         redirectUrl = '/admin/dashboard';
       }
       
+      // Force a full page reload to ensure session is synced
       console.log('✅ Redirecting to:', redirectUrl);
-      // Use window.location.href for full page reload
-      window.location.href = redirectUrl;
+      // Use window.location.replace with a small delay to ensure session is persisted
+      setTimeout(() => {
+        window.location.replace(redirectUrl);
+      }, 500);
     } catch (err: any) {
       console.error('❌ Login error:', err);
       if (err.message === 'Login timeout') {

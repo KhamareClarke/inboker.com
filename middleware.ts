@@ -24,6 +24,23 @@ export async function middleware(req: NextRequest) {
     req.nextUrl.pathname.startsWith('/onboarding');
 
   const isAdminRoute = req.nextUrl.pathname.startsWith('/admin');
+  
+  // Also check for auth token in cookies as fallback (prevents redirect loops during login)
+  if (!session && (isDashboard || isAdminRoute)) {
+    const cookies = req.cookies.getAll();
+    const hasAuthCookie = cookies.some(cookie => 
+      cookie.name.includes('supabase') || 
+      cookie.name.includes('sb-') ||
+      cookie.name.includes('auth-token')
+    );
+    
+    // If we have auth cookies but no session, allow access (session might be loading)
+    // This prevents redirect loops during login
+    if (hasAuthCookie) {
+      console.log('Auth cookie found, allowing access while session loads');
+      return res;
+    }
+  }
 
   // Check for auth header or token in URL (for API routes)
   const authHeader = req.headers.get('authorization');
