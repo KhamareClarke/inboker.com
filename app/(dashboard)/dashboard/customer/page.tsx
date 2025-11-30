@@ -49,6 +49,20 @@ export default function CustomerDashboardPage() {
       return;
     }
 
+    // If auth is done loading but user is not set yet, wait a bit more
+    // This gives the auth provider time to set the user from onAuthStateChange
+    if (!user) {
+      console.log('User not set yet, waiting for auth provider to initialize...');
+      const waitTimer = setTimeout(() => {
+        if (!user) {
+          console.log('User still not authenticated after wait - redirecting to login');
+          router.replace('/login');
+        }
+      }, 2000); // Wait 2 seconds for auth to initialize
+      
+      return () => clearTimeout(waitTimer);
+    }
+
     if (user) {
       console.log('User authenticated:', user.email);
       console.log('Profile:', profile ? profile.full_name : 'No profile yet');
@@ -825,21 +839,18 @@ export default function CustomerDashboardPage() {
   const favoriteServicesList = services.filter((s: any) => favoriteServices.includes(s.id));
   const totalFavorites = favoriteBookings.length + favoriteServices.length;
 
-  // Show loading screen while auth is initializing
-  if (authLoading) {
+  // Show loading screen while auth is initializing or user is not set yet
+  if (authLoading || !user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-sm text-muted-foreground">Loading dashboard...</p>
+          <p className="text-sm text-muted-foreground">
+            {authLoading ? 'Loading dashboard...' : 'Initializing session...'}
+          </p>
         </div>
       </div>
     );
-  }
-
-  // Redirect if not authenticated
-  if (!user) {
-    return null; // The useEffect will handle the redirect
   }
 
   // Don't block the entire page - show content even if services are loading
