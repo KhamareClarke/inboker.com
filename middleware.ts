@@ -25,29 +25,47 @@ export async function middleware(req: NextRequest) {
 
   const isAdminRoute = req.nextUrl.pathname.startsWith('/admin');
   
-  // Also check for auth token in cookies as fallback (prevents redirect loops during login)
-  if (!session && (isDashboard || isAdminRoute)) {
-    const cookies = req.cookies.getAll();
-    const hasAuthCookie = cookies.some(cookie => 
-      cookie.name.includes('supabase') || 
-      cookie.name.includes('sb-') ||
-      cookie.name.includes('auth-token')
-    );
-    
-    // If we have auth cookies but no session, allow access (session might be loading)
-    // This prevents redirect loops during login
-    if (hasAuthCookie) {
-      console.log('Auth cookie found, allowing access while session loads');
-      return res;
-    }
-  }
-
   // Check for auth header or token in URL (for API routes)
   const authHeader = req.headers.get('authorization');
   const hasAuthToken = authHeader?.startsWith('Bearer ');
   
-  // Protect dashboard and admin routes - require authentication
+  // Also check for auth token in cookies as fallback (prevents redirect loops during login)
+  // Supabase stores session in localStorage, but also sets cookies
   if (!session && (isDashboard || isAdminRoute)) {
+    const cookies = req.cookies.getAll();
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const projectRef = supabaseUrl.split('//')[1]?.split('.')[0] || '';
+    
+    // Check for various Supabase cookie patterns
+    const hasAuthCookie = cookies.some(cookie => {
+      const name = cookie.name.toLowerCase();
+      return (
+        name.includes('supabase') || 
+        name.includes('sb-') ||
+        name.includes('auth-token') ||
+        name.includes('access-token') ||
+        name.includes('refresh-token') ||
+        (projectRef && name.includes(projectRef.toLowerCase()))
+      );
+    });
+    
+    // If we have auth cookies but no session, allow access (session might be loading)
+    // This prevents redirect loops during login - the page will handle auth check
+    if (hasAuthCookie) {
+      console.log('Auth cookie found, allowing access while session loads');
+      return res;
+    }
+    
+    // If no session and no cookies, redirect to login
+    // But add a small delay check - if this is right after login, cookies might not be set yet
+    // Allow the page to load and check auth client-side
+    const referer = req.headers.get('referer');
+    if (referer && referer.includes('/login')) {
+      // Coming from login page - allow access, let client-side handle auth
+      console.log('Coming from login page, allowing access for client-side auth check');
+      return res;
+    }
+    
     // Redirect unauthenticated users to login
     return NextResponse.redirect(new URL('/login', req.url));
   }
