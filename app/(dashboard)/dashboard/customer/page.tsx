@@ -42,9 +42,10 @@ export default function CustomerDashboardPage() {
     // Check if this is a new signup - if so, wait a bit longer for auth to initialize
     const isNewSignup = searchParams.get('signup') === 'success';
     
-    // Wait for auth to finish loading
+    // Wait for auth to finish loading - but don't block rendering
     if (authLoading) {
       console.log('Auth still loading...');
+      // Don't return early - let the page render with loading state
       return;
     }
 
@@ -823,6 +824,23 @@ export default function CustomerDashboardPage() {
   const favoriteBookingsList = bookings.filter((b: any) => favoriteBookings.includes(b.id));
   const favoriteServicesList = services.filter((s: any) => favoriteServices.includes(s.id));
   const totalFavorites = favoriteBookings.length + favoriteServices.length;
+
+  // Show loading screen while auth is initializing
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-sm text-muted-foreground">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect if not authenticated
+  if (!user) {
+    return null; // The useEffect will handle the redirect
+  }
 
   // Don't block the entire page - show content even if services are loading
   // Only show loading for the services section itself

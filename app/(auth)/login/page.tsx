@@ -132,9 +132,10 @@ export default function LoginPage() {
       
       // Force a full page reload to ensure session is synced
       console.log('✅ Redirecting to:', redirectUrl);
-      // Use window.location.replace with a small delay to ensure session is persisted
+      // Use window.location.href for full page reload (replace might not work in some cases)
       setTimeout(() => {
-        window.location.replace(redirectUrl);
+        console.log('🔄 Executing redirect now...');
+        window.location.href = redirectUrl;
       }, 500);
     } catch (err: any) {
       console.error('❌ Login error:', err);
