@@ -49,16 +49,17 @@ export default function CustomerDashboardPage() {
       return;
     }
 
-    // If auth is done loading but user is not set yet, wait a bit more
+    // If auth is done loading but user is not set yet, wait longer
     // This gives the auth provider time to set the user from onAuthStateChange
+    // onAuthStateChange can fire after loading is false, so we need to wait longer (5 seconds)
     if (!user) {
-      console.log('User not set yet, waiting for auth provider to initialize...');
+      console.log('User not set yet, waiting for auth provider to initialize (onAuthStateChange may fire soon)...');
       const waitTimer = setTimeout(() => {
-        if (!user) {
-          console.log('User still not authenticated after wait - redirecting to login');
-          router.replace('/login');
-        }
-      }, 2000); // Wait 2 seconds for auth to initialize
+        // Only redirect if user is still not set after 5 seconds
+        // This gives onAuthStateChange plenty of time to fire
+        console.log('User still not authenticated after 5 second wait - redirecting to login');
+        router.replace('/login');
+      }, 5000); // Wait 5 seconds for onAuthStateChange to fire
       
       return () => clearTimeout(waitTimer);
     }
@@ -839,15 +840,27 @@ export default function CustomerDashboardPage() {
   const favoriteServicesList = services.filter((s: any) => favoriteServices.includes(s.id));
   const totalFavorites = favoriteBookings.length + favoriteServices.length;
 
-  // Show loading screen while auth is initializing or user is not set yet
-  if (authLoading || !user) {
+  // Show loading screen while auth is initializing
+  // Don't block on user being set - let the useEffect handle the redirect logic
+  if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-sm text-muted-foreground">
-            {authLoading ? 'Loading dashboard...' : 'Initializing session...'}
-          </p>
+          <p className="text-sm text-muted-foreground">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // If user is not set after auth loading is done, show loading while we wait
+  // The useEffect will handle redirecting if user doesn't appear
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-sm text-muted-foreground">Initializing session...</p>
         </div>
       </div>
     );
