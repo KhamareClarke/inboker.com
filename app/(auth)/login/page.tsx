@@ -25,114 +25,104 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      console.log('🔵 Calling login API...');
+      console.log('🔵 Signing in with Supabase...');
       
-      // Add timeout to fetch
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), password }),
-        signal: controller.signal,
+      // Use signInWithPassword directly - this automatically handles session persistence
+      const signInPromise = supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password: password,
       });
+      
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Login timeout')), 10000)
+      );
+      
+      const { data: authData, error: authError } = await Promise.race([
+        signInPromise,
+        timeoutPromise
+      ]) as any;
 
-      clearTimeout(timeoutId);
-
-      console.log('🔵 API response:', response.status);
-
-      const result = await response.json();
-      console.log('🔵 API result:', result);
-
-      if (!response.ok) {
-        // Check if it's a suspended account error
-        if (response.status === 403 || result.error?.includes('suspended')) {
-          setError('Your account has been suspended by admin');
+      if (authError) {
+        console.error('❌ Auth error:', authError);
+        if (authError.message?.includes('Invalid login credentials')) {
+          setError('Invalid email or password');
+        } else if (authError.message?.includes('Email not confirmed')) {
+          setError('Please confirm your email before logging in');
         } else {
-          setError(result.error || 'Invalid email or password');
+          setError(authError.message || 'Login failed');
         }
         setLoading(false);
         return;
       }
 
-      if (result.success && result.session) {
-        console.log('✅ Login successful, setting session...');
-        
-        // Get role and business slug from login response first
-        const role = result.role || 'business_owner';
-        const businessSlug = result.businessSlug;
-        
-        console.log('✅ User role from login:', role);
-        console.log('✅ Business slug:', businessSlug);
-        
-        // Determine redirect URL
-        let redirectUrl = '/dashboard';
-        if (role === 'customer') {
-          redirectUrl = '/dashboard/customer';
-          console.log('✅ Redirecting customer to /dashboard/customer');
-        } else if (role === 'business_owner') {
-          if (businessSlug) {
-            redirectUrl = `/${businessSlug}/dashboard`;
-            console.log('✅ Redirecting business owner to /' + businessSlug + '/dashboard');
-          } else {
-            redirectUrl = '/dashboard/business-owner';
-            console.log('✅ Redirecting business owner to /dashboard/business-owner');
-          }
-        } else if (role === 'admin') {
-          redirectUrl = '/admin/dashboard';
-          console.log('✅ Redirecting admin to /admin/dashboard');
-        }
-        
-        // Try setSession with a short timeout - if it hangs, we'll redirect anyway
-        console.log('🔄 Setting session...');
-        let sessionSet = false;
-        
-        const setSessionPromise = supabase.auth.setSession({
-          access_token: result.session.access_token,
-          refresh_token: result.session.refresh_token,
-        });
-        
-        // Race setSession against a timeout
-        const sessionTimeout = new Promise((resolve) => {
-          setTimeout(() => {
-            if (!sessionSet) {
-              console.warn('⚠️ setSession timeout, redirecting anyway');
-              resolve({ timeout: true });
-            }
-          }, 2000); // 2 second timeout
-        });
-        
-        Promise.race([setSessionPromise, sessionTimeout])
-          .then((sessionResult: any) => {
-            sessionSet = true;
-            if (sessionResult?.timeout) {
-              console.warn('⚠️ Session set timed out, but redirecting');
-            } else if (sessionResult?.error) {
-              console.error('❌ Session set error (non-blocking):', sessionResult.error);
-            } else {
-              console.log('✅ Session set successfully');
-            }
-          })
-          .catch((err) => {
-            sessionSet = true;
-            console.warn('⚠️ Session set error (non-blocking):', err);
-          });
-        
-        // Redirect after a short delay (don't wait for setSession)
-        // The auth provider will handle session detection on the next page
-        setTimeout(() => {
-          console.log('🔄 Redirecting to:', redirectUrl);
-          window.location.replace(redirectUrl);
-        }, 500);
+      if (!authData?.session) {
+        setError('Login failed - no session created');
+        setLoading(false);
         return;
       }
 
-      setError('Login failed');
-      setLoading(false);
+      console.log('✅ Login successful, session created automatically');
+      
+      // Wait a moment for session to be persisted
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Get user role from database
+      let role = 'business_owner';
+      let businessSlug = null;
+      
+      try {
+        const { data: profile } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', authData.user.id)
+          .single();
+        
+        if (profile?.role) {
+          role = profile.role;
+        }
+        
+        // Get business slug if business owner
+        if (role === 'business_owner') {
+          const { data: businessProfile } = await supabase
+            .from('business_profiles')
+            .select('business_slug, business_name')
+            .eq('user_id', authData.user.id)
+            .single();
+          
+          if (businessProfile) {
+            businessSlug = businessProfile.business_slug || 
+              businessProfile.business_name
+                .toLowerCase()
+                .replace(/[^a-z0-9\s-]/g, '')
+                .replace(/\s+/g, '-')
+                .replace(/-+/g, '-')
+                .trim();
+          }
+        }
+      } catch (profileErr) {
+        console.warn('⚠️ Could not fetch profile, using default role');
+      }
+      
+      // Determine redirect URL
+      let redirectUrl = '/dashboard';
+      if (role === 'customer') {
+        redirectUrl = '/dashboard/customer';
+      } else if (role === 'business_owner') {
+        if (businessSlug) {
+          redirectUrl = `/${businessSlug}/dashboard`;
+        } else {
+          redirectUrl = '/dashboard/business-owner';
+        }
+      } else if (role === 'admin') {
+        redirectUrl = '/admin/dashboard';
+      }
+      
+      console.log('✅ Redirecting to:', redirectUrl);
+      // Use window.location.href for full page reload
+      window.location.href = redirectUrl;
     } catch (err: any) {
       console.error('❌ Login error:', err);
-      if (err.name === 'AbortError') {
+      if (err.message === 'Login timeout') {
         setError('Login timed out. Please check your connection.');
       } else {
         setError('Login failed. Please try again.');
@@ -204,3 +194,4 @@ export default function LoginPage() {
     </div>
   );
 }
+
