@@ -49,19 +49,14 @@ export default function CustomerDashboardPage() {
       return;
     }
 
-    // If auth is done loading but user is not set yet, wait longer
-    // This gives the auth provider time to set the user from onAuthStateChange
-    // onAuthStateChange can fire after loading is false, so we need to wait longer (5 seconds)
+    // If auth is done loading but user is not set yet, wait for onAuthStateChange
+    // Don't redirect immediately - onAuthStateChange will fire and set the user
+    // The loading screen will handle showing the wait state
     if (!user) {
-      console.log('User not set yet, waiting for auth provider to initialize (onAuthStateChange may fire soon)...');
-      const waitTimer = setTimeout(() => {
-        // Only redirect if user is still not set after 5 seconds
-        // This gives onAuthStateChange plenty of time to fire
-        console.log('User still not authenticated after 5 second wait - redirecting to login');
-        router.replace('/login');
-      }, 5000); // Wait 5 seconds for onAuthStateChange to fire
-      
-      return () => clearTimeout(waitTimer);
+      console.log('User not set yet, waiting for onAuthStateChange to fire...');
+      // Don't set any redirect timer - just wait for onAuthStateChange
+      // The page will show loading screen while waiting
+      return;
     }
 
     if (user) {
@@ -119,15 +114,10 @@ export default function CustomerDashboardPage() {
       return () => {
         clearTimeout(safetyTimer);
       };
-    } else {
-      console.log('User not authenticated - redirecting to login');
-      // Clear all loading states immediately
-      setLoading(false);
-      setBookingsLoading(false);
-      setFavoritesLoading(false);
-      // Redirect to login if not authenticated
-      router.replace('/login');
     }
+    // Note: We don't redirect here if user is not set
+    // The loading screen will show, and onAuthStateChange will set the user
+    // Only redirect if user is still null after a very long time (handled by loading screen timeout)
   }, [user, profile, authLoading, searchParams, router]);
 
   // Reload bookings when page gains focus (e.g., after returning from booking page)
@@ -854,7 +844,20 @@ export default function CustomerDashboardPage() {
   }
   
   // If user is not set after auth loading is done, show loading while we wait
-  // The useEffect will handle redirecting if user doesn't appear
+  // onAuthStateChange will fire and set the user
+  // Only redirect after a very long wait (10 seconds) if user never appears
+  useEffect(() => {
+    if (!authLoading && !user) {
+      const redirectTimer = setTimeout(() => {
+        // Final check - only redirect if user is still not set
+        console.log('User still not set after 10 seconds - redirecting to login');
+        router.replace('/login');
+      }, 10000); // Wait 10 seconds for onAuthStateChange to fire
+      
+      return () => clearTimeout(redirectTimer);
+    }
+  }, [authLoading, user, router]);
+  
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
