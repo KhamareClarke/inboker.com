@@ -80,6 +80,13 @@ export async function middleware(req: NextRequest) {
   // Redirect authenticated users away from auth pages
   // But only if we have a valid session - don't redirect if session is still loading
   if (session && isAuthPage) {
+    // Check if user is trying to access login after already being on dashboard
+    // This prevents redirect loops
+    const referer = req.headers.get('referer');
+    if (referer && referer.includes('/dashboard')) {
+      // User is already on dashboard, don't redirect back to login
+      return res;
+    }
     // Redirect to generic dashboard - let the dashboard page handle role-based routing
     // This prevents redirect loops by letting client-side handle the role check
     return NextResponse.redirect(new URL('/dashboard', req.url));

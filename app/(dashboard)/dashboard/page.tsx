@@ -12,36 +12,41 @@ export default function DashboardPage() {
   const router = useRouter();
   const userName = profile?.full_name || user?.email || 'User';
 
-  // Redirect unauthenticated users to login - but wait a bit for auth to initialize
+  // Redirect unauthenticated users to login - but wait longer for auth to initialize
   useEffect(() => {
     if (!loading && !user) {
-      // Wait 3 seconds before redirecting to give auth time to initialize
+      // Wait 5 seconds before redirecting to give auth time to initialize
+      // This prevents redirect loops when auth is still loading
       const redirectTimer = setTimeout(() => {
         // Double check user is still not set
         if (!user) {
           console.log('User not authenticated after wait - redirecting to login');
-          router.replace('/login');
+          // Use window.location to break any potential loops
+          window.location.href = '/login';
         }
-      }, 3000);
+      }, 5000);
       
       return () => clearTimeout(redirectTimer);
     }
-  }, [user, loading, router]);
+  }, [user, loading]);
 
   // Redirect customers to their dashboard, business owners to theirs
   // Only redirect if we have both user and role - wait for both to be ready
   useEffect(() => {
     if (!loading && role && user) {
-      // Small delay to ensure everything is ready
+      // Small delay to ensure everything is ready and prevent loops
       const redirectTimer = setTimeout(() => {
-        if (role === 'customer') {
-          router.replace('/dashboard/customer');
-        } else if (role === 'business_owner') {
-          router.replace('/dashboard/business-owner');
-        } else if (role === 'admin') {
-          router.replace('/admin/dashboard');
+        // Only redirect if we're still on the generic dashboard page
+        if (window.location.pathname === '/dashboard') {
+          if (role === 'customer') {
+            router.replace('/dashboard/customer');
+          } else if (role === 'business_owner') {
+            router.replace('/dashboard/business-owner');
+          } else if (role === 'admin') {
+            router.replace('/admin/dashboard');
+          }
         }
-      }, 500);
+      }, 1000);
       
       return () => clearTimeout(redirectTimer);
     }
