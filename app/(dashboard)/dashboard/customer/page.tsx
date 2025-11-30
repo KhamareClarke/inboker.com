@@ -397,6 +397,9 @@ export default function CustomerDashboardPage() {
       let error: any = null;
 
       try {
+        // Use case-insensitive email matching and fetch ALL bookings regardless of status
+        // Query all bookings for this customer - no status filter to show all (pending, confirmed, completed, cancelled)
+        // Use the original structure to match display code expectations
         const queryPromise = supabase
           .from('business_profile_bookings')
           .select(`
@@ -404,8 +407,10 @@ export default function CustomerDashboardPage() {
             business_profile_services (
               id,
               name,
-              color,
-              is_active
+              description,
+              duration_minutes,
+              price,
+              color
             ),
             business_profiles (
               id,
@@ -414,7 +419,7 @@ export default function CustomerDashboardPage() {
               business_slug
             )
           `)
-          .eq('client_email', user.email)
+          .ilike('client_email', user.email.toLowerCase().trim()) // Case-insensitive match, normalized
           .order('start_time', { ascending: false });
 
         const timeoutPromise = new Promise((_, reject) => 
