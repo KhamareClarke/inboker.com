@@ -830,8 +830,21 @@ export default function CustomerDashboardPage() {
   const favoriteServicesList = services.filter((s: any) => favoriteServices.includes(s.id));
   const totalFavorites = favoriteBookings.length + favoriteServices.length;
 
+  // Redirect timer - only redirect if user is still not set after 10 seconds
+  // This must be before any conditional returns (React hooks rule)
+  useEffect(() => {
+    if (!authLoading && !user) {
+      const redirectTimer = setTimeout(() => {
+        // Final check - only redirect if user is still not set
+        console.log('User still not set after 10 seconds - redirecting to login');
+        router.replace('/login');
+      }, 10000); // Wait 10 seconds for onAuthStateChange to fire
+      
+      return () => clearTimeout(redirectTimer);
+    }
+  }, [authLoading, user, router]);
+
   // Show loading screen while auth is initializing
-  // Don't block on user being set - let the useEffect handle the redirect logic
   if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -845,19 +858,6 @@ export default function CustomerDashboardPage() {
   
   // If user is not set after auth loading is done, show loading while we wait
   // onAuthStateChange will fire and set the user
-  // Only redirect after a very long wait (10 seconds) if user never appears
-  useEffect(() => {
-    if (!authLoading && !user) {
-      const redirectTimer = setTimeout(() => {
-        // Final check - only redirect if user is still not set
-        console.log('User still not set after 10 seconds - redirecting to login');
-        router.replace('/login');
-      }, 10000); // Wait 10 seconds for onAuthStateChange to fire
-      
-      return () => clearTimeout(redirectTimer);
-    }
-  }, [authLoading, user, router]);
-  
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
