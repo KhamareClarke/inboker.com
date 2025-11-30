@@ -4,9 +4,11 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/providers/auth-provider';
 
 export default function LoginPage() {
   const searchParams = useSearchParams();
+  const { user, profile, loading: authLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -17,48 +19,41 @@ export default function LoginPage() {
     if (searchParams.get('signup') === 'success') {
       setSuccess('Account created successfully! Please log in to continue.');
     }
-    
-    // Check if user is already authenticated and redirect
-    const checkAuth = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          console.log('✅ User already authenticated, redirecting to dashboard...');
-          // Get user role to determine redirect URL
-          const { data: profile } = await supabase
-            .from('users')
-            .select('role')
-            .eq('id', session.user.id)
-            .single();
-          
-          let redirectUrl = '/dashboard';
-          if (profile?.role === 'customer') {
-            redirectUrl = '/dashboard/customer';
-          } else if (profile?.role === 'business_owner') {
-            const { data: businessProfile } = await supabase
-              .from('business_profiles')
-              .select('business_slug, business_name')
-              .eq('user_id', session.user.id)
-              .single();
-            
-            if (businessProfile?.business_slug) {
-              redirectUrl = `/${businessProfile.business_slug}/dashboard`;
-            } else {
-              redirectUrl = '/dashboard/business-owner';
-            }
-          } else if (profile?.role === 'admin') {
-            redirectUrl = '/admin/dashboard';
-          }
-          
-          window.location.href = redirectUrl;
-        }
-      } catch (err) {
-        console.error('Error checking auth:', err);
-      }
-    };
-    
-    checkAuth();
   }, [searchParams]);
+
+  // Redirect if user is already authenticated
+  useEffect(() => {
+    if (!authLoading && user) {
+      console.log('✅ User already authenticated, redirecting to dashboard...');
+      // Get user role to determine redirect URL
+      let redirectUrl = '/dashboard';
+      if (profile?.role === 'customer') {
+        redirectUrl = '/dashboard/customer';
+      } else if (profile?.role === 'business_owner') {
+        // Try to get business slug
+        supabase
+          .from('business_profiles')
+          .select('business_slug, business_name')
+          .eq('user_id', user.id)
+          .single()
+          .then(({ data: businessProfile }) => {
+            if (businessProfile?.business_slug) {
+              window.location.href = `/${businessProfile.business_slug}/dashboard`;
+            } else {
+              window.location.href = '/dashboard/business-owner';
+            }
+          })
+          .catch(() => {
+            window.location.href = '/dashboard/business-owner';
+          });
+        return; // Don't redirect twice
+      } else if (profile?.role === 'admin') {
+        redirectUrl = '/admin/dashboard';
+      }
+      
+      window.location.href = redirectUrl;
+    }
+  }, [user, profile, authLoading]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
