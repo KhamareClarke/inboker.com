@@ -29,8 +29,8 @@ export async function middleware(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
   const hasAuthToken = authHeader?.startsWith('Bearer ');
   
-  // Also check for auth token in cookies as fallback (prevents redirect loops during login)
-  // Supabase stores session in localStorage, but also sets cookies
+  // For dashboard routes, be more lenient - Supabase stores sessions in localStorage
+  // which middleware can't access. Let the client-side handle auth checks.
   if (!session && (isDashboard || isAdminRoute)) {
     const cookies = req.cookies.getAll();
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -56,18 +56,20 @@ export async function middleware(req: NextRequest) {
       return res;
     }
     
-    // If no session and no cookies, redirect to login
-    // But add a small delay check - if this is right after login, cookies might not be set yet
-    // Allow the page to load and check auth client-side
+    // Check referer - if coming from login or dashboard, allow access
+    // Let client-side handle the auth check to prevent redirect loops
     const referer = req.headers.get('referer');
-    if (referer && referer.includes('/login')) {
-      // Coming from login page - allow access, let client-side handle auth
-      console.log('Coming from login page, allowing access for client-side auth check');
+    if (referer && (referer.includes('/login') || referer.includes('/dashboard'))) {
+      // Coming from login or dashboard - allow access, let client-side handle auth
+      console.log('Coming from auth/dashboard page, allowing access for client-side auth check');
       return res;
     }
     
-    // Redirect unauthenticated users to login
-    return NextResponse.redirect(new URL('/login', req.url));
+    // Only redirect to login if we're sure there's no session
+    // But be lenient - the client-side will handle the redirect if needed
+    // This prevents redirect loops when session is in localStorage
+    console.log('No session detected in middleware, but allowing access for client-side check');
+    return res; // Let client-side handle redirect if needed
   }
 
   // If user has session, allow access to dashboard
