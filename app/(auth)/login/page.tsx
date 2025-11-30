@@ -36,7 +36,8 @@ export default function LoginPage() {
           .select('business_slug, business_name')
           .eq('user_id', user.id)
           .single()
-          .then(({ data: businessProfile }) => {
+          .then((result: { data: { business_slug?: string; business_name?: string } | null }) => {
+            const businessProfile = result.data;
             if (businessProfile?.business_slug) {
               window.location.href = `/${businessProfile.business_slug}/dashboard`;
             } else {
