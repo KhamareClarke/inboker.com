@@ -830,8 +830,9 @@ export default function CustomerDashboardPage() {
   const favoriteServicesList = services.filter((s: any) => favoriteServices.includes(s.id));
   const totalFavorites = favoriteBookings.length + favoriteServices.length;
 
-  // Redirect timer - only redirect if user is still not set after 10 seconds
+  // Redirect timer - only redirect if user is still not set after 15 seconds
   // This must be before any conditional returns (React hooks rule)
+  // Increased timeout to prevent redirect loops
   useEffect(() => {
     // Always return a cleanup function to maintain consistent hook count
     let redirectTimer: NodeJS.Timeout | null = null;
@@ -839,15 +840,16 @@ export default function CustomerDashboardPage() {
     if (!authLoading && !user) {
       redirectTimer = setTimeout(() => {
         // Final check - only redirect if user is still not set
-        console.log('User still not set after 10 seconds - redirecting to login');
-        router.replace('/login');
-      }, 10000); // Wait 10 seconds for onAuthStateChange to fire
+        console.log('User still not set after 15 seconds - redirecting to login');
+        // Use window.location to force a full page reload and break any loops
+        window.location.href = '/login';
+      }, 15000); // Wait 15 seconds for onAuthStateChange to fire
     }
     
     return () => {
       if (redirectTimer) clearTimeout(redirectTimer);
     };
-  }, [authLoading, user, router]);
+  }, [authLoading, user]);
 
   // Show loading screen while auth is initializing
   if (authLoading) {

@@ -4,11 +4,9 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/lib/providers/auth-provider';
 
 export default function LoginPage() {
   const searchParams = useSearchParams();
-  const { user, profile, loading: authLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -21,40 +19,8 @@ export default function LoginPage() {
     }
   }, [searchParams]);
 
-  // Redirect if user is already authenticated
-  useEffect(() => {
-    if (!authLoading && user) {
-      console.log('✅ User already authenticated, redirecting to dashboard...');
-      // Get user role to determine redirect URL
-      let redirectUrl = '/dashboard';
-      if (profile?.role === 'customer') {
-        redirectUrl = '/dashboard/customer';
-      } else if (profile?.role === 'business_owner') {
-        // Try to get business slug
-        supabase
-          .from('business_profiles')
-          .select('business_slug, business_name')
-          .eq('user_id', user.id)
-          .single()
-          .then((result: { data: { business_slug?: string; business_name?: string } | null }) => {
-            const businessProfile = result.data;
-            if (businessProfile?.business_slug) {
-              window.location.href = `/${businessProfile.business_slug}/dashboard`;
-            } else {
-              window.location.href = '/dashboard/business-owner';
-            }
-          })
-          .catch(() => {
-            window.location.href = '/dashboard/business-owner';
-          });
-        return; // Don't redirect twice
-      } else if (profile?.role === 'admin') {
-        redirectUrl = '/admin/dashboard';
-      }
-      
-      window.location.href = redirectUrl;
-    }
-  }, [user, profile, authLoading]);
+  // Don't redirect here - let middleware handle it to avoid redirect loops
+  // The middleware will redirect authenticated users away from login page
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

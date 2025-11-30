@@ -12,24 +12,38 @@ export default function DashboardPage() {
   const router = useRouter();
   const userName = profile?.full_name || user?.email || 'User';
 
-  // Redirect unauthenticated users to login
+  // Redirect unauthenticated users to login - but wait a bit for auth to initialize
   useEffect(() => {
     if (!loading && !user) {
-      console.log('User not authenticated - redirecting to login');
-      router.replace('/login');
+      // Wait 3 seconds before redirecting to give auth time to initialize
+      const redirectTimer = setTimeout(() => {
+        // Double check user is still not set
+        if (!user) {
+          console.log('User not authenticated after wait - redirecting to login');
+          router.replace('/login');
+        }
+      }, 3000);
+      
+      return () => clearTimeout(redirectTimer);
     }
   }, [user, loading, router]);
 
   // Redirect customers to their dashboard, business owners to theirs
+  // Only redirect if we have both user and role - wait for both to be ready
   useEffect(() => {
     if (!loading && role && user) {
-      if (role === 'customer') {
-        router.replace('/dashboard/customer');
-      } else if (role === 'business_owner') {
-        router.replace('/dashboard/business-owner');
-      } else if (role === 'admin') {
-        router.replace('/admin/dashboard');
-      }
+      // Small delay to ensure everything is ready
+      const redirectTimer = setTimeout(() => {
+        if (role === 'customer') {
+          router.replace('/dashboard/customer');
+        } else if (role === 'business_owner') {
+          router.replace('/dashboard/business-owner');
+        } else if (role === 'admin') {
+          router.replace('/admin/dashboard');
+        }
+      }, 500);
+      
+      return () => clearTimeout(redirectTimer);
     }
   }, [role, loading, user, router]);
   const stats = [
