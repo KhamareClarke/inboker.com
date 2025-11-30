@@ -833,15 +833,20 @@ export default function CustomerDashboardPage() {
   // Redirect timer - only redirect if user is still not set after 10 seconds
   // This must be before any conditional returns (React hooks rule)
   useEffect(() => {
+    // Always return a cleanup function to maintain consistent hook count
+    let redirectTimer: NodeJS.Timeout | null = null;
+    
     if (!authLoading && !user) {
-      const redirectTimer = setTimeout(() => {
+      redirectTimer = setTimeout(() => {
         // Final check - only redirect if user is still not set
         console.log('User still not set after 10 seconds - redirecting to login');
         router.replace('/login');
       }, 10000); // Wait 10 seconds for onAuthStateChange to fire
-      
-      return () => clearTimeout(redirectTimer);
     }
+    
+    return () => {
+      if (redirectTimer) clearTimeout(redirectTimer);
+    };
   }, [authLoading, user, router]);
 
   // Show loading screen while auth is initializing
