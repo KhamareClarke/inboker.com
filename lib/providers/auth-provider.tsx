@@ -223,11 +223,64 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [router]);
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setProfile(null);
-    // Use window.location for full page reload to clear all state
-    window.location.href = '/login';
+    try {
+      // Clear local state first
+      setUser(null);
+      setProfile(null);
+      
+      // Sign out from Supabase
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Sign out error:', error);
+      }
+      
+      // Clear all Supabase-related cookies manually to ensure they're gone
+      const cookies = document.cookie.split(";");
+      cookies.forEach((c) => {
+        const cookieName = c.trim().split("=")[0];
+        if (cookieName.includes('supabase') || cookieName.includes('sb-') || cookieName.includes('auth')) {
+          // Clear for current path
+          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+          // Clear for root domain
+          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname};`;
+          // Clear for parent domain (if applicable)
+          const parts = window.location.hostname.split('.');
+          if (parts.length > 1) {
+            const parentDomain = '.' + parts.slice(-2).join('.');
+            document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${parentDomain};`;
+          }
+        }
+      });
+      
+      // Clear auth-related localStorage and sessionStorage
+      try {
+        // Clear Supabase auth data from localStorage
+        Object.keys(localStorage).forEach(key => {
+          if (key.includes('supabase') || key.includes('sb-') || key.includes('auth')) {
+            localStorage.removeItem(key);
+          }
+        });
+        // Clear auth-related sessionStorage
+        Object.keys(sessionStorage).forEach(key => {
+          if (key.includes('supabase') || key.includes('sb-') || key.includes('auth')) {
+            sessionStorage.removeItem(key);
+          }
+        });
+      } catch (e) {
+        console.warn('Could not clear storage:', e);
+      }
+      
+      // Wait a bit to ensure everything is cleared, then redirect with a bypass parameter
+      setTimeout(() => {
+        // Use a query parameter to bypass middleware redirect check
+        // Force a full page reload to ensure all state is cleared
+        window.location.replace('/login?logout=true');
+      }, 200);
+    } catch (error) {
+      console.error('Error during sign out:', error);
+      // Force redirect even if there's an error
+      window.location.replace('/login?logout=true');
+    }
   };
 
   return (

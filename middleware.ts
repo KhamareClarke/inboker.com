@@ -81,7 +81,9 @@ export async function middleware(req: NextRequest) {
 
   // Redirect authenticated users away from auth pages
   // But only if we have a valid session - don't redirect if session is still loading
-  if (session && isAuthPage) {
+  // Allow access if logout parameter is present (user is logging out)
+  const isLogout = req.nextUrl.searchParams.get('logout') === 'true';
+  if (session && isAuthPage && !isLogout) {
     // Always redirect authenticated users away from login/signup pages
     // Redirect to generic dashboard - let the dashboard page handle role-based routing
     // This prevents redirect loops by letting client-side handle the role check
