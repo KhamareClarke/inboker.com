@@ -87,7 +87,20 @@ export async function POST(req: NextRequest) {
     }
 
     // Create Stripe Checkout session
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin;
+    // Get base URL from environment variable, request host header, or fallback to origin
+    const getBaseUrl = () => {
+      if (process.env.NEXT_PUBLIC_APP_URL) {
+        return process.env.NEXT_PUBLIC_APP_URL;
+      }
+      // Check for custom domain in headers (Vercel sets x-forwarded-host)
+      const host = req.headers.get('x-forwarded-host') || req.headers.get('host');
+      if (host && !host.includes('vercel.app')) {
+        const protocol = req.headers.get('x-forwarded-proto') || 'https';
+        return `${protocol}://${host}`;
+      }
+      return req.nextUrl.origin;
+    };
+    const baseUrl = getBaseUrl();
     
     const checkoutSession = await stripe.checkout.sessions.create({
       customer: customerId,
