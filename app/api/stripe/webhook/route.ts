@@ -171,9 +171,10 @@ export async function POST(req: NextRequest) {
       case 'invoice.payment_succeeded': {
         const invoice = event.data.object as Stripe.Invoice;
         
-        if (invoice.subscription) {
+        const invoiceSubscription = (invoice as any).subscription as string | null | undefined;
+        if (invoiceSubscription) {
           const subscriptionRaw = await stripe.subscriptions.retrieve(
-            invoice.subscription as string
+            invoiceSubscription
           );
           const subscription = subscriptionRaw as unknown as Stripe.Subscription;
           
@@ -269,9 +270,10 @@ export async function POST(req: NextRequest) {
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice;
         
-        if (invoice.subscription) {
+        const invoiceSubscription = (invoice as any).subscription as string | null | undefined;
+        if (invoiceSubscription) {
           const subscriptionRaw = await stripe.subscriptions.retrieve(
-            invoice.subscription as string
+            invoiceSubscription
           );
           const subscription = subscriptionRaw as unknown as Stripe.Subscription;
           
