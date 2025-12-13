@@ -27,9 +27,9 @@ export async function GET(req: NextRequest) {
     // If subscription exists in Stripe, get latest details
     if (subscription.stripe_subscription_id) {
       try {
-        const stripeSub: Stripe.Subscription = await stripe.subscriptions.retrieve(
+        const stripeSub = await stripe.subscriptions.retrieve(
           subscription.stripe_subscription_id
-        ) as Stripe.Subscription;
+        );
         
         return NextResponse.json({
           subscription: {
