@@ -95,9 +95,13 @@ export async function POST(req: NextRequest) {
     const trialEnd = Math.floor(Date.now() / 1000) + (TRIAL_PERIOD_DAYS * 24 * 60 * 60);
 
     // Create Stripe Checkout session with trial
-    // Get base URL - prioritize custom domain
+    // Get base URL - always use custom domain in production
     const getBaseUrl = () => {
-      // First check environment variable
+      // In production, always use custom domain
+      if (process.env.NODE_ENV === 'production') {
+        return 'https://inboker.com';
+      }
+      // Check environment variable (for local development)
       if (process.env.NEXT_PUBLIC_APP_URL) {
         return process.env.NEXT_PUBLIC_APP_URL;
       }
@@ -107,10 +111,7 @@ export async function POST(req: NextRequest) {
         const protocol = req.headers.get('x-forwarded-proto') || 'https';
         return `${protocol}://${host}`;
       }
-      // Fallback: use custom domain in production, or origin for development
-      if (process.env.NODE_ENV === 'production') {
-        return 'https://inboker.com';
-      }
+      // Fallback to origin
       return req.nextUrl.origin;
     };
     const baseUrl = getBaseUrl();
