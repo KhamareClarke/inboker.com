@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { stripe } from '@/lib/stripe';
+import Stripe from 'stripe';
 
 // GET - Get current subscription
 export async function GET(req: NextRequest) {
@@ -26,7 +27,7 @@ export async function GET(req: NextRequest) {
     // If subscription exists in Stripe, get latest details
     if (subscription.stripe_subscription_id) {
       try {
-        const stripeSubscription = await stripe.subscriptions.retrieve(
+        const stripeSubscription: Stripe.Subscription = await stripe.subscriptions.retrieve(
           subscription.stripe_subscription_id
         );
         
@@ -35,7 +36,9 @@ export async function GET(req: NextRequest) {
             ...subscription,
             stripeSubscription: {
               status: stripeSubscription.status,
-              current_period_end: new Date(stripeSubscription.current_period_end * 1000).toISOString(),
+              current_period_end: stripeSubscription.current_period_end 
+                ? new Date(stripeSubscription.current_period_end * 1000).toISOString()
+                : null,
               cancel_at_period_end: stripeSubscription.cancel_at_period_end,
             },
           },
