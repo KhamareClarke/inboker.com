@@ -17,11 +17,12 @@ export { TRIAL_PERIOD_DAYS, SUBSCRIPTION_PLANS, type SubscriptionPlan } from './
 
 // Helper function to get subscription status from Stripe
 export function getSubscriptionStatus(stripeSubscription: Stripe.Subscription): 'active' | 'inactive' | 'trial' | 'cancelled' | 'past_due' | 'trialing' {
-  const status = stripeSubscription.status;
+  const status = stripeSubscription.status as string;
   
   if (status === 'active') {
     // Check if it's in trial period
-    if (stripeSubscription.trial_end && stripeSubscription.trial_end > Math.floor(Date.now() / 1000)) {
+    const trialEnd = (stripeSubscription as any).trial_end as number | null | undefined;
+    if (trialEnd && trialEnd > Math.floor(Date.now() / 1000)) {
       return 'trialing';
     }
     return 'active';
