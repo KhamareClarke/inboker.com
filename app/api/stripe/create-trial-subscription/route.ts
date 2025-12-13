@@ -95,8 +95,9 @@ export async function POST(req: NextRequest) {
     const trialEnd = Math.floor(Date.now() / 1000) + (TRIAL_PERIOD_DAYS * 24 * 60 * 60);
 
     // Create Stripe Checkout session with trial
-    // Get base URL from environment variable, request host header, or fallback to origin
+    // Get base URL - prioritize custom domain
     const getBaseUrl = () => {
+      // First check environment variable
       if (process.env.NEXT_PUBLIC_APP_URL) {
         return process.env.NEXT_PUBLIC_APP_URL;
       }
@@ -105,6 +106,10 @@ export async function POST(req: NextRequest) {
       if (host && !host.includes('vercel.app')) {
         const protocol = req.headers.get('x-forwarded-proto') || 'https';
         return `${protocol}://${host}`;
+      }
+      // Fallback: use custom domain in production, or origin for development
+      if (process.env.NODE_ENV === 'production') {
+        return 'https://inboker.com';
       }
       return req.nextUrl.origin;
     };
