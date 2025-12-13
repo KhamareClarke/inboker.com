@@ -31,15 +31,20 @@ export async function GET(req: NextRequest) {
           subscription.stripe_subscription_id
         );
         
+        // Extract properties with proper typing
+        const currentPeriodEnd = (stripeSub as Stripe.Subscription).current_period_end;
+        const cancelAtPeriodEnd = (stripeSub as Stripe.Subscription).cancel_at_period_end;
+        const status = (stripeSub as Stripe.Subscription).status;
+        
         return NextResponse.json({
           subscription: {
             ...subscription,
             stripeSubscription: {
-              status: stripeSub.status,
-              current_period_end: stripeSub.current_period_end 
-                ? new Date(stripeSub.current_period_end * 1000).toISOString()
+              status: status,
+              current_period_end: currentPeriodEnd 
+                ? new Date(currentPeriodEnd * 1000).toISOString()
                 : null,
-              cancel_at_period_end: stripeSub.cancel_at_period_end,
+              cancel_at_period_end: cancelAtPeriodEnd,
             },
           },
         });
