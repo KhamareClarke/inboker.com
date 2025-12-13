@@ -54,51 +54,68 @@ export default function SignupPage() {
       
       console.log('✅ Signup result:', result);
       
-      // If signup succeeded (user was created), auto-authenticate and redirect
+      // If signup succeeded (user was created)
       if (result && result.user) {
         console.log('✅ User created successfully!');
         setError('');
-        setLoading(false);
         
-        // Auto-authenticate with timeout - if it fails or takes too long, redirect to login
-        const authTimeout = setTimeout(() => {
-          console.warn('⏱️ Auto-authentication timeout - redirecting to login');
-          window.location.replace('/login?signup=success');
-        }, 8000); // 8 second timeout
-        
-        try {
-          console.log('🔄 Auto-authenticating user after signup...');
-          
-          // Sign in directly with Supabase with timeout
-          const signInPromise = supabase.auth.signInWithPassword({
-            email: email.trim().toLowerCase(),
-            password: password,
-          });
-          
-          const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('SignIn timeout')), 5000)
-          );
-          
-          const signInResult = await Promise.race([signInPromise, timeoutPromise]) as any;
-          clearTimeout(authTimeout);
-          
-          if (signInResult.error || !signInResult.data?.session) {
-            console.error('❌ Auto-login failed:', signInResult.error);
-            window.location.replace('/login?signup=success');
+        // For business owners, redirect to trial subscription checkout
+        if (userType === 'business_owner') {
+          try {
+            // Auto-authenticate first
+            const signInResult = await supabase.auth.signInWithPassword({
+              email: email.trim().toLowerCase(),
+              password: password,
+            });
+            
+            if (signInResult.error || !signInResult.data?.session) {
+              console.error('❌ Auto-login failed:', signInResult.error);
+              setError('Account created but login failed. Please sign in manually.');
+              setLoading(false);
+              return;
+            }
+            
+            console.log('✅ Auto-authentication successful!');
+            
+            // Sync session to cookies so API routes can access it
+            try {
+              const syncResponse = await fetch('/api/auth/sync-session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                  access_token: signInResult.data.session.access_token,
+                  refresh_token: signInResult.data.session.refresh_token,
+                }),
+              });
+
+              if (syncResponse.ok) {
+                console.log('✅ Session synced to cookies');
+              } else {
+                console.warn('⚠️ Failed to sync session to cookies, but continuing');
+              }
+            } catch (syncErr) {
+              console.warn('⚠️ Error syncing session to cookies:', syncErr);
+            }
+            
+            // Wait a moment for session to be fully established
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Redirect to trial subscription checkout
+            // We'll create a page that shows the trial offer and collects card details
+            window.location.href = '/signup/trial?plan=monthly';
+            return;
+          } catch (authErr: any) {
+            console.error('❌ Auto-authentication error:', authErr);
+            setError('Account created but login failed. Please sign in manually.');
+            setLoading(false);
             return;
           }
-          
-          console.log('✅ Auto-authentication successful!');
-          
-          // Always redirect to login page after signup - user should log in manually
-          console.log('✅ Redirecting to login page after signup');
-          window.location.replace('/login?signup=success');
-        } catch (authErr: any) {
-          clearTimeout(authTimeout);
-          console.error('❌ Auto-authentication error:', authErr);
-          // Always redirect to login if auto-auth fails
-          window.location.replace('/login?signup=success');
         }
+        
+        // For customers, redirect to login
+        setLoading(false);
+        window.location.replace('/login?signup=success');
         return;
       }
       
@@ -164,9 +181,21 @@ export default function SignupPage() {
             )}
             
             {userType === 'business_owner' && (
-              <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 text-sm text-blue-900 dark:text-blue-200">
-                <p className="font-medium mb-1">Business Owner Account</p>
-                <p>Create and manage your booking business. Access dashboard, manage services, staff, and bookings.</p>
+              <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30 border-2 border-blue-300 dark:border-blue-700 rounded-lg p-4 text-sm">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-r from-blue-600 to-cyan-600 flex items-center justify-center text-white font-bold">
+                    14
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-bold text-blue-900 dark:text-blue-100 mb-1">14-Day Free Trial</p>
+                    <p className="text-blue-800 dark:text-blue-200 mb-2">
+                      Start your free 14-day trial! No charges until your trial ends. Cancel anytime.
+                    </p>
+                    <p className="text-xs text-blue-700 dark:text-blue-300">
+                      After trial: £20/month or £50/year. Card required to start trial.
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
             

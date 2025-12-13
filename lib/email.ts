@@ -557,5 +557,169 @@ export const emailTemplates = {
       </html>
     `,
   }),
+
+  // Trial and subscription emails
+  trialStarted: (userName: string, trialEndDate: Date) => ({
+    subject: '🎉 Welcome to Inboker - Your Free Trial Has Started!',
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 30px; border-radius: 8px 8px 0 0; text-align: center; }
+            .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
+            .info-box { background: white; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid #10b981; }
+            .button { display: inline-block; padding: 12px 24px; background: linear-gradient(135deg, #2563eb 0%, #06b6d4 100%); color: white; text-decoration: none; border-radius: 6px; margin: 10px 5px; font-weight: bold; }
+            .footer { text-align: center; margin-top: 20px; color: #6b7280; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>🎉 Welcome to Inboker!</h1>
+            </div>
+            <div class="content">
+              <p>Hello ${userName},</p>
+              <p><strong>Your account has been created and your free trial has started!</strong></p>
+              
+              <div class="info-box">
+                <h3 style="margin-top: 0; color: #059669;">✨ Your Free Trial Details</h3>
+                <p><strong>Trial End Date:</strong> ${trialEndDate.toLocaleDateString('en-US', { 
+                  weekday: 'long', 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
+                })}</p>
+                <p>You now have full access to all features during your 14-day free trial period.</p>
+              </div>
+              
+              <p>You can now:</p>
+              <ul>
+                <li>✅ Create and manage your business profile</li>
+                <li>✅ Add services and staff members</li>
+                <li>✅ Accept bookings from customers</li>
+                <li>✅ Use all premium features</li>
+              </ul>
+              
+              <p style="text-align: center; margin-top: 30px;">
+                <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://inboker.com'}/dashboard/business-owner" class="button">Go to Dashboard</a>
+              </p>
+              
+              <p style="margin-top: 30px; padding: 15px; background: #fef3c7; border-radius: 6px; border-left: 4px solid #f59e0b;">
+                <strong>📅 Important:</strong> After ${trialEndDate.toLocaleDateString('en-US', { 
+                  month: 'long', 
+                  day: 'numeric' 
+                })}, you will be automatically charged for your subscription. You can cancel anytime during your trial.
+              </p>
+            </div>
+            <div class="footer">
+              <p>This is an automated email from Inboker</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+  }),
+
+  trialEndingReminder: (userName: string, daysRemaining: number, trialEndDate: Date) => ({
+    subject: `⏰ Your Free Trial Ends in ${daysRemaining} ${daysRemaining === 1 ? 'Day' : 'Days'}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%); color: white; padding: 30px; border-radius: 8px 8px 0 0; text-align: center; }
+            .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
+            .info-box { background: white; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid #f59e0b; }
+            .button { display: inline-block; padding: 12px 24px; background: linear-gradient(135deg, #2563eb 0%, #06b6d4 100%); color: white; text-decoration: none; border-radius: 6px; margin: 10px 5px; font-weight: bold; }
+            .footer { text-align: center; margin-top: 20px; color: #6b7280; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>⏰ Trial Ending Soon</h1>
+            </div>
+            <div class="content">
+              <p>Hello ${userName},</p>
+              <p><strong>Your free trial ends in ${daysRemaining} ${daysRemaining === 1 ? 'day' : 'days'}!</strong></p>
+              
+              <div class="info-box">
+                <h3 style="margin-top: 0; color: #f97316;">📅 Trial End Date</h3>
+                <p><strong>${trialEndDate.toLocaleDateString('en-US', { 
+                  weekday: 'long', 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
+                })}</strong></p>
+                <p>After this date, you will be automatically charged for your subscription.</p>
+              </div>
+              
+              <p>Don't worry - you can continue enjoying all features. If you'd like to cancel before being charged, you can do so from your billing dashboard.</p>
+              
+              <p style="text-align: center; margin-top: 30px;">
+                <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://inboker.com'}/dashboard/business-owner/billing" class="button">Manage Subscription</a>
+              </p>
+            </div>
+            <div class="footer">
+              <p>This is an automated email from Inboker</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+  }),
+
+  trialEnded: (userName: string, planName: string, amount: number) => ({
+    subject: '💳 Your Trial Has Ended - You Will Be Charged Now',
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #2563eb 0%, #06b6d4 100%); color: white; padding: 30px; border-radius: 8px 8px 0 0; text-align: center; }
+            .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
+            .info-box { background: white; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid #2563eb; }
+            .button { display: inline-block; padding: 12px 24px; background: linear-gradient(135deg, #2563eb 0%, #06b6d4 100%); color: white; text-decoration: none; border-radius: 6px; margin: 10px 5px; font-weight: bold; }
+            .footer { text-align: center; margin-top: 20px; color: #6b7280; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>💳 Trial Period Ended</h1>
+            </div>
+            <div class="content">
+              <p>Hello ${userName},</p>
+              <p><strong>Your free trial has ended. You will now be charged for your subscription.</strong></p>
+              
+              <div class="info-box">
+                <h3 style="margin-top: 0; color: #2563eb;">📋 Subscription Details</h3>
+                <p><strong>Plan:</strong> ${planName}</p>
+                <p><strong>Amount:</strong> £${amount.toFixed(2)}</p>
+                <p>Your payment method on file will be charged automatically.</p>
+              </div>
+              
+              <p>Thank you for using Inboker! You can continue to access all features with your active subscription.</p>
+              
+              <p style="text-align: center; margin-top: 30px;">
+                <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://inboker.com'}/dashboard/business-owner" class="button">Go to Dashboard</a>
+                <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://inboker.com'}/dashboard/business-owner/billing" class="button">View Billing</a>
+              </p>
+            </div>
+            <div class="footer">
+              <p>This is an automated email from Inboker</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+  }),
 };
 

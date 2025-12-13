@@ -1,20 +1,25 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, Users, BookOpen, TrendingUp, Sparkles, Bot, LogOut, Loader2 } from 'lucide-react';
+import { Calendar, Users, BookOpen, TrendingUp, Sparkles, Bot, LogOut, Loader2, CreditCard, AlertCircle, CheckCircle2, X } from 'lucide-react';
 import { useAuth } from '@/lib/providers/auth-provider';
 import { useBusinessProfile } from '@/lib/hooks/use-business-profile';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { TRIAL_PERIOD_DAYS } from '@/lib/stripe-config';
 
 export default function BusinessOwnerDashboardPage() {
   const { profile, user, signOut, loading: authLoading } = useAuth();
   const { profile: businessProfile, loading: businessProfileLoading } = useBusinessProfile();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const userName = profile?.full_name || user?.email || 'User';
+  const [subscriptionStatus, setSubscriptionStatus] = useState<'active' | 'inactive' | 'trial' | 'loading'>('loading');
+  const [showTrialSuccess, setShowTrialSuccess] = useState(false);
 
   // Generate slug from business name if slug is missing
   const generateSlug = (name: string): string => {
@@ -34,6 +39,46 @@ export default function BusinessOwnerDashboardPage() {
     }
   }, [user, authLoading, router]);
 
+  // Check for trial_started query parameter
+  useEffect(() => {
+    if (searchParams.get('trial_started') === 'true') {
+      setShowTrialSuccess(true);
+      // Remove query parameter from URL
+      router.replace('/dashboard/business-owner', { scroll: false });
+    }
+  }, [searchParams, router]);
+
+  // Check subscription status
+  useEffect(() => {
+    if (user) {
+      checkSubscriptionStatus();
+    }
+  }, [user]);
+
+  const checkSubscriptionStatus = async () => {
+    try {
+      const response = await fetch('/api/stripe/subscription');
+      const data = await response.json();
+      
+      if (response.ok && data.subscription) {
+        const status = data.subscription.status;
+        // Allow access during trial (trialing, trial) and when active
+        if (status === 'active' || status === 'trialing' || status === 'trial') {
+          setSubscriptionStatus('active');
+        } else {
+          setSubscriptionStatus('inactive');
+          // Don't redirect - show prompt to start trial instead
+        }
+      } else {
+        setSubscriptionStatus('inactive');
+        // Don't redirect - show prompt to start trial instead
+      }
+    } catch (error) {
+      console.error('Error checking subscription:', error);
+      setSubscriptionStatus('inactive');
+    }
+  };
+
   // Redirect to business-specific dashboard if business profile exists
   useEffect(() => {
     if (!businessProfileLoading && businessProfile && user) {
@@ -44,8 +89,8 @@ export default function BusinessOwnerDashboardPage() {
     }
   }, [businessProfile, businessProfileLoading, user, router]);
 
-  // Show loading while checking for business profile
-  if (businessProfileLoading) {
+  // Show loading while checking for business profile or subscription
+  if (businessProfileLoading || subscriptionStatus === 'loading') {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
@@ -99,6 +144,52 @@ export default function BusinessOwnerDashboardPage() {
 
   return (
     <div className="space-y-8">
+      {/* Subscription Required Banner */}
+      {subscriptionStatus === 'inactive' && (
+        <Alert className="border-blue-500 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30 border-2">
+          <CreditCard className="h-5 w-5 text-blue-600" />
+          <AlertDescription className="text-blue-900 dark:text-blue-100">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex-1">
+                <p className="font-bold text-lg mb-1">Start Your Free Trial</p>
+                <p className="text-base">
+                  Get {TRIAL_PERIOD_DAYS} days free to explore all features. No credit card required until trial ends.
+                </p>
+              </div>
+              <Button 
+                onClick={() => router.push('/signup/trial?plan=monthly')}
+                className="md:ml-4 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 whitespace-nowrap"
+              >
+                Start Free Trial
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Trial Success Message */}
+      {showTrialSuccess && (
+        <Alert className="border-green-500 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 border-2 relative">
+          <CheckCircle2 className="h-5 w-5 text-green-600" />
+          <AlertDescription className="text-green-900 dark:text-green-100 pr-8">
+            <div className="space-y-2">
+              <p className="font-bold text-lg">🎉 Your Free Trial Has Been Started!</p>
+              <p className="text-base">
+                Now you can access and use all the features. After {TRIAL_PERIOD_DAYS} days, you will be charged. Enjoy your free trial!
+              </p>
+            </div>
+          </AlertDescription>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowTrialSuccess(false)}
+            className="absolute top-2 right-2 text-green-600 hover:text-green-700 hover:bg-green-100 dark:hover:bg-green-900/30"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </Alert>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-4xl font-bold tracking-tight mb-2">Business Dashboard</h1>

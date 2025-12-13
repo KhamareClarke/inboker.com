@@ -104,10 +104,30 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  // Protect dashboard routes - let the page handle role checks
-  // Don't block on database queries in middleware
+  // Protect dashboard routes - check subscription for business owners
   if (session && isDashboard) {
-    // Allow access - the dashboard page will check roles
+    const pathname = req.nextUrl.pathname;
+    const isBillingPage = pathname.includes('/billing');
+    const isApiRoute = pathname.startsWith('/api');
+    
+    // Allow billing page and API routes without subscription check
+    if (isBillingPage || isApiRoute) {
+      return res;
+    }
+    
+    // Check if user is a business owner
+    const { data: userProfile } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', session.user.id)
+      .single();
+
+    // Allow business owners to access dashboard even without subscription
+    // They can set up their business profile first, then start a trial
+    // The dashboard page will show a prompt to start a trial if needed
+    // No subscription check in middleware - let the dashboard handle it
+
+    // Allow access - the dashboard page will handle other role checks
     return res;
   }
 
@@ -123,4 +143,5 @@ export const config = {
     '/signup',
     '/forgot-password',
   ],
+  // Exclude billing page from subscription check (it's handled in the middleware logic)
 };

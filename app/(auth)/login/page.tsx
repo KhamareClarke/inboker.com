@@ -66,6 +66,27 @@ export default function LoginPage() {
 
       console.log('✅ Login successful, session created automatically');
       
+      // Sync session to cookies so API routes can access it
+      try {
+        const syncResponse = await fetch('/api/auth/sync-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            access_token: authData.session.access_token,
+            refresh_token: authData.session.refresh_token,
+          }),
+        });
+
+        if (syncResponse.ok) {
+          console.log('✅ Session synced to cookies');
+        } else {
+          console.warn('⚠️ Failed to sync session to cookies, but continuing');
+        }
+      } catch (syncErr) {
+        console.warn('⚠️ Error syncing session to cookies:', syncErr);
+      }
+      
       // Verify session is set and wait for it to be fully persisted
       let sessionVerified = false;
       for (let i = 0; i < 5; i++) {
@@ -119,9 +140,15 @@ export default function LoginPage() {
         console.warn('⚠️ Could not fetch profile, using default role');
       }
       
+      // Check for redirect parameter
+      const redirectParam = searchParams.get('redirect');
+      
       // Determine redirect URL
       let redirectUrl = '/dashboard';
-      if (role === 'customer') {
+      if (redirectParam) {
+        // Use redirect parameter if provided
+        redirectUrl = redirectParam;
+      } else if (role === 'customer') {
         redirectUrl = '/dashboard/customer';
       } else if (role === 'business_owner') {
         if (businessSlug) {
