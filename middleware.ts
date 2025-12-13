@@ -3,6 +3,15 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export async function middleware(req: NextRequest) {
+  // Redirect from Vercel URL to custom domain in production
+  const host = req.headers.get('host') || '';
+  if (process.env.NODE_ENV === 'production' && host.includes('vercel.app')) {
+    const url = req.nextUrl.clone();
+    url.host = 'inboker.com';
+    url.protocol = 'https:';
+    return NextResponse.redirect(url, 301);
+  }
+
   const res = NextResponse.next();
   const supabase = createMiddlewareClient({ req, res });
 
