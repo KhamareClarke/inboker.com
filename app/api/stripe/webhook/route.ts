@@ -44,10 +44,11 @@ export async function POST(req: NextRequest) {
         const session = event.data.object as Stripe.Checkout.Session;
         
         if (session.mode === 'subscription' && session.subscription) {
-          const subscription = await stripe.subscriptions.retrieve(
+          const subscriptionRaw = await stripe.subscriptions.retrieve(
             session.subscription as string,
             { expand: ['items.data.price.product'] }
           );
+          const subscription = subscriptionRaw as unknown as Stripe.Subscription;
 
           const userId = session.metadata?.userId || subscription.metadata?.userId;
           if (!userId) {
@@ -57,6 +58,12 @@ export async function POST(req: NextRequest) {
 
           const status = getSubscriptionStatus(subscription);
           
+          // Extract properties with type assertions to avoid TypeScript errors
+          const currentPeriodStart = (subscription as any).current_period_start as number;
+          const currentPeriodEnd = (subscription as any).current_period_end as number;
+          const cancelAtPeriodEnd = (subscription as any).cancel_at_period_end as boolean | null | undefined;
+          const trialEnd = (subscription as any).trial_end as number | null | undefined;
+          
           await supabaseAdmin
             .from('subscriptions')
             .upsert({
@@ -65,10 +72,10 @@ export async function POST(req: NextRequest) {
               stripe_subscription_id: subscription.id,
               stripe_price_id: subscription.items.data[0]?.price.id,
               status: status,
-              current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-              current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-              cancel_at_period_end: subscription.cancel_at_period_end || false,
-              trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
+              current_period_start: new Date(currentPeriodStart * 1000).toISOString(),
+              current_period_end: new Date(currentPeriodEnd * 1000).toISOString(),
+              cancel_at_period_end: cancelAtPeriodEnd || false,
+              trial_end: trialEnd ? new Date(trialEnd * 1000).toISOString() : null,
             }, {
               onConflict: 'user_id',
             });
@@ -76,7 +83,7 @@ export async function POST(req: NextRequest) {
           console.log(`Subscription created/updated for user ${userId}: ${status}`);
 
           // Send welcome email if trial just started
-          if (status === 'trialing' && subscription.trial_end) {
+          if (status === 'trialing' && trialEnd) {
             try {
               const { data: userData } = await supabaseAdmin
                 .from('users')
@@ -85,7 +92,7 @@ export async function POST(req: NextRequest) {
                 .single();
 
               if (userData?.email) {
-                const trialEndDate = new Date(subscription.trial_end * 1000);
+                const trialEndDate = new Date(trialEnd * 1000);
                 const emailContent = emailTemplates.trialStarted(
                   userData.full_name || userData.email,
                   trialEndDate
@@ -117,16 +124,22 @@ export async function POST(req: NextRequest) {
 
         const status = getSubscriptionStatus(subscription);
         
+        // Extract properties with type assertions to avoid TypeScript errors
+        const currentPeriodStart = (subscription as any).current_period_start as number;
+        const currentPeriodEnd = (subscription as any).current_period_end as number;
+        const cancelAtPeriodEnd = (subscription as any).cancel_at_period_end as boolean | null | undefined;
+        const trialEnd = (subscription as any).trial_end as number | null | undefined;
+        
         await supabaseAdmin
           .from('subscriptions')
           .update({
             stripe_subscription_id: subscription.id,
             stripe_price_id: subscription.items.data[0]?.price.id,
             status: status,
-            current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-            cancel_at_period_end: subscription.cancel_at_period_end || false,
-            trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
+            current_period_start: new Date(currentPeriodStart * 1000).toISOString(),
+            current_period_end: new Date(currentPeriodEnd * 1000).toISOString(),
+            cancel_at_period_end: cancelAtPeriodEnd || false,
+            trial_end: trialEnd ? new Date(trialEnd * 1000).toISOString() : null,
           })
           .eq('user_id', userId);
 
@@ -159,9 +172,10 @@ export async function POST(req: NextRequest) {
         const invoice = event.data.object as Stripe.Invoice;
         
         if (invoice.subscription) {
-          const subscription = await stripe.subscriptions.retrieve(
+          const subscriptionRaw = await stripe.subscriptions.retrieve(
             invoice.subscription as string
           );
+          const subscription = subscriptionRaw as unknown as Stripe.Subscription;
           
           const userId = subscription.metadata?.userId;
           if (!userId) break;
@@ -173,6 +187,11 @@ export async function POST(req: NextRequest) {
             .eq('user_id', userId)
             .single();
 
+          // Extract properties with type assertions
+          const trialEnd = (subscription as any).trial_end as number | null | undefined;
+          const currentPeriodStart = (subscription as any).current_period_start as number;
+          const currentPeriodEnd = (subscription as any).current_period_end as number;
+
           // Check if this is the first payment after trial (trial just ended)
           // This happens when:
           // 1. Previous status was 'trialing' or 'trial'
@@ -181,8 +200,8 @@ export async function POST(req: NextRequest) {
           const wasTrialing = (currentSubscription?.status === 'trialing' || currentSubscription?.status === 'trial') &&
                               (invoice.billing_reason === 'subscription_cycle' || invoice.billing_reason === 'subscription_create') &&
                               subscription.status === 'active' &&
-                              subscription.trial_end &&
-                              subscription.trial_end <= Math.floor(Date.now() / 1000);
+                              trialEnd &&
+                              trialEnd <= Math.floor(Date.now() / 1000);
 
           // Update subscription status to active if payment succeeded
           const status = getSubscriptionStatus(subscription);
@@ -191,8 +210,8 @@ export async function POST(req: NextRequest) {
             .from('subscriptions')
             .update({
               status: status,
-              current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-              current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+              current_period_start: new Date(currentPeriodStart * 1000).toISOString(),
+              current_period_end: new Date(currentPeriodEnd * 1000).toISOString(),
             })
             .eq('user_id', userId);
 
@@ -251,9 +270,10 @@ export async function POST(req: NextRequest) {
         const invoice = event.data.object as Stripe.Invoice;
         
         if (invoice.subscription) {
-          const subscription = await stripe.subscriptions.retrieve(
+          const subscriptionRaw = await stripe.subscriptions.retrieve(
             invoice.subscription as string
           );
+          const subscription = subscriptionRaw as unknown as Stripe.Subscription;
           
           const userId = subscription.metadata?.userId;
           if (!userId) break;
