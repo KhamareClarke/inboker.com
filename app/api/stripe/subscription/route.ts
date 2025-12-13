@@ -27,19 +27,22 @@ export async function GET(req: NextRequest) {
     // If subscription exists in Stripe, get latest details
     if (subscription.stripe_subscription_id) {
       try {
-        const stripeSubscription: Stripe.Subscription = await stripe.subscriptions.retrieve(
+        const stripeSubscription = await stripe.subscriptions.retrieve(
           subscription.stripe_subscription_id
         );
+        
+        // Access properties with type assertion to handle Stripe API response type
+        const sub = stripeSubscription as unknown as Stripe.Subscription;
         
         return NextResponse.json({
           subscription: {
             ...subscription,
             stripeSubscription: {
-              status: stripeSubscription.status,
-              current_period_end: stripeSubscription.current_period_end 
-                ? new Date(stripeSubscription.current_period_end * 1000).toISOString()
+              status: sub.status,
+              current_period_end: sub.current_period_end 
+                ? new Date(sub.current_period_end * 1000).toISOString()
                 : null,
-              cancel_at_period_end: stripeSubscription.cancel_at_period_end,
+              cancel_at_period_end: sub.cancel_at_period_end,
             },
           },
         });
