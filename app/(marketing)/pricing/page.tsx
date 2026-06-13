@@ -160,7 +160,7 @@ export default function PricingPage() {
                   rating: 5,
                 },
                 {
-                  quote: 'Multi-staff scheduling was a nightmare before Inboker. Now everyone sees their shifts and we're fully booked.',
+                  quote: "Multi-staff scheduling was a nightmare before Inboker. Now everyone sees their shifts and we're fully booked.",
                   author: 'James K.',
                   role: 'Physio clinic manager, Bristol',
                   rating: 5,
