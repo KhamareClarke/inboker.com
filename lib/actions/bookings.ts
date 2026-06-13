@@ -1,0 +1,220 @@
+'use server';
+
+import { supabase } from '../supabase';
+import { revalidatePath } from 'next/cache';
+import { createClient } from '@supabase/supabase-js';
+import { checkWorkspaceBookingOverlap } from '@/lib/booking/overlap-checker';
+import { isWorkspaceProviderAvailable } from '@/lib/booking/availability-checker';
+import { StaffNotAvailableError, WorkspaceBookingConflictError } from '@/lib/booking/booking-errors';
+
+// Get Supabase client (create if needed for server actions)
+const getSupabaseClient = () => {
+  if (supabase) return supabase;
+  
+  // Fallback: create client directly if supabase is null (build-time)
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) {
+    throw new Error('Supabase environment variables are not configured');
+  }
+  return createClient(url, key);
+};
+
+export async function getBookings(workspaceId: string) {
+  const client = getSupabaseClient();
+  const { data, error } = await client
+    .from('bookings')
+    .select(`
+      *,
+      client:clients(*),
+      provider:workspace_members(
+        *,
+        user:users(*)
+      )
+    `)
+    .eq('workspace_id', workspaceId)
+    .order('start_time', { ascending: false });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getUpcomingBookings(workspaceId: string) {
+  const now = new Date().toISOString();
+  const client = getSupabaseClient();
+
+  const { data, error } = await client
+    .from('bookings')
+    .select(`
+      *,
+      client:clients(*),
+      provider:workspace_members(
+        *,
+        user:users(*)
+      )
+    `)
+    .eq('workspace_id', workspaceId)
+    .gte('start_time', now)
+    .order('start_time', { ascending: true })
+    .limit(10);
+
+  if (error) throw error;
+  return data;
+}
+
+export async function createBooking(data: {
+  workspace_id: string;
+  client_id: string;
+  provider_id: string;
+  service_id?: string;
+  title: string;
+  start_time: string;
+  end_time: string;
+  description?: string;
+  status?: string;
+  source?: string;
+}) {
+  const client = getSupabaseClient();
+  const startTime = new Date(data.start_time);
+  const endTime = new Date(data.end_time);
+
+  const availability = await isWorkspaceProviderAvailable(client, {
+    workspaceId: data.workspace_id,
+    providerId: data.provider_id,
+    startTime,
+    endTime,
+  });
+  if (!availability.available) {
+    throw new StaffNotAvailableError(
+      'Staff member is not available at this time.',
+      availability.reason
+    );
+  }
+
+  const { conflict, conflictingBooking } = await checkWorkspaceBookingOverlap(client, {
+    workspaceId: data.workspace_id,
+    providerId: data.provider_id,
+    startTime,
+    endTime,
+  });
+
+  if (conflict) {
+    const c = (conflictingBooking ?? {}) as { start_time?: string; end_time?: string };
+    throw new WorkspaceBookingConflictError(
+      `Staff member is booked from ${c.start_time ?? '?'} to ${c.end_time ?? '?'}. Please select another time.`,
+      (conflictingBooking as Record<string, unknown>) ?? null
+    );
+  }
+
+  const { data: booking, error } = await client
+    .from('bookings')
+    .insert({
+      workspace_id: data.workspace_id,
+      client_id: data.client_id,
+      provider_id: data.provider_id,
+      service_id: data.service_id,
+      title: data.title,
+      description: data.description,
+      start_time: data.start_time,
+      end_time: data.end_time,
+      status: data.status || 'pending',
+      source: data.source,
+    })
+    .select(`
+      *,
+      client:clients(*),
+      provider:workspace_members(
+        *,
+        user:users(*)
+      ),
+      service:services(*)
+    `)
+    .single();
+
+  if (error) throw error;
+
+  await client
+    .from('client_activities')
+    .insert({
+      workspace_id: data.workspace_id,
+      client_id: data.client_id,
+      activity_type: 'booking',
+      title: 'Booking Created',
+      description: `Appointment scheduled for ${data.start_time}`,
+      metadata: { booking_id: booking.id },
+    });
+
+  revalidatePath('/dashboard/bookings');
+  revalidatePath('/dashboard/calendar');
+  return booking;
+}
+
+export async function updateBookingStatus(
+  bookingId: string,
+  status: 'pending' | 'confirmed' | 'cancelled' | 'completed'
+) {
+  const client = getSupabaseClient();
+  const { data, error } = await client
+    .from('bookings')
+    .update({ status })
+    .eq('id', bookingId)
+    .select(`
+      *,
+      client:clients(*),
+      provider:workspace_members(
+        *,
+        user:users(*)
+      )
+    `)
+    .single();
+
+  if (error) throw error;
+
+  if (status === 'completed') {
+    await client
+      .from('clients')
+      .update({
+        lead_score: client.rpc('increment_lead_score', { client_id: data.client_id, points: 50 }),
+      })
+      .eq('id', data.client_id);
+  }
+
+  revalidatePath('/dashboard/bookings');
+  revalidatePath('/dashboard/calendar');
+  return data;
+}
+
+export async function updateBookingPayment(
+  bookingId: string,
+  paymentStatus: 'unpaid' | 'paid' | 'refunded',
+  amount?: number
+) {
+  const updateData: any = { payment_status: paymentStatus };
+  if (amount !== undefined) {
+    updateData.amount = amount;
+  }
+
+  const client = getSupabaseClient();
+  const { data, error } = await client
+    .from('bookings')
+    .update(updateData)
+    .eq('id', bookingId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  revalidatePath('/dashboard/bookings');
+  return data;
+}
+
+export async function deleteBooking(bookingId: string) {
+  const client = getSupabaseClient();
+  const { error } = await client
+    .from('bookings')
+    .delete()
+    .eq('id', bookingId);
+
+  if (error) throw error;
+  revalidatePath('/dashboard/bookings');
+  revalidatePath('/dashboard/calendar');
+}

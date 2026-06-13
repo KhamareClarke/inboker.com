@@ -1,0 +1,1945 @@
+'use client';
+
+import { useState, useEffect, useMemo } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Calendar, BookOpen, Clock, User, Star, CheckCircle2, DollarSign, Loader2, MapPin, ExternalLink, Bell, X, AlertCircle, LogOut } from 'lucide-react';
+import { useAuth } from '@/lib/providers/auth-provider';
+import { supabase } from '@/lib/supabase';
+import { Section } from '@/components/ui/section';
+import type { BusinessProfile, BusinessProfileService } from '@/lib/types';
+import { InboxBell } from '@/components/notifications/inbox-bell';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { haversineKm } from '@/lib/geo';
+import { SERVICE_CATEGORY_OPTIONS } from '@/lib/service-categories';
+
+// Utility function to generate slug from service name
+function generateServiceSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .trim();
+}
+
+export default function CustomerDashboardPage() {
+  const { profile, user, signOut, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const userName = profile?.full_name || user?.email || 'User';
+  const [services, setServices] = useState<(BusinessProfileService & { business_profile: BusinessProfile })[]>([]);
+  const [businessRatingById, setBusinessRatingById] = useState<Record<string, number>>({});
+  const [filterCategory, setFilterCategory] = useState('');
+  const [filterMinPrice, setFilterMinPrice] = useState('');
+  const [filterMaxPrice, setFilterMaxPrice] = useState('');
+  const [filterMinRating, setFilterMinRating] = useState('0');
+  const [filterMaxKm, setFilterMaxKm] = useState('');
+  const [filterAcceptsNewOnly, setFilterAcceptsNewOnly] = useState(false);
+  const [userGeo, setUserGeo] = useState<{ lat: number; lon: number } | null>(null);
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [favoriteBookings, setFavoriteBookings] = useState<string[]>([]); // Array of booking IDs
+  const [favoriteServices, setFavoriteServices] = useState<string[]>([]); // Array of service IDs
+  const [loading, setLoading] = useState(true);
+  const [bookingsLoading, setBookingsLoading] = useState(true);
+  const [favoritesLoading, setFavoritesLoading] = useState(true);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [dismissedNotifications, setDismissedNotifications] = useState<Set<string>>(new Set());
+  const [servicesError, setServicesError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Check if this is a new signup - if so, wait a bit longer for auth to initialize
+    const isNewSignup = searchParams.get('signup') === 'success';
+    
+    // Wait for auth to finish loading - but don't block rendering
+    if (authLoading) {
+      console.log('Auth still loading...');
+      // Don't return early - let the page render with loading state
+      return;
+    }
+
+    // If auth is done loading but user is not set yet, wait for onAuthStateChange
+    // Don't redirect immediately - onAuthStateChange will fire and set the user
+    // The loading screen will handle showing the wait state
+    if (!user) {
+      console.log('User not set yet, waiting for onAuthStateChange to fire...');
+      // Don't set any redirect timer - just wait for onAuthStateChange
+      // The page will show loading screen while waiting
+      return;
+    }
+
+    if (user) {
+      console.log('User authenticated:', user.email);
+      console.log('Profile:', profile ? profile.full_name : 'No profile yet');
+      
+      // If new signup, wait a bit longer for everything to initialize
+      if (isNewSignup) {
+        console.log('🆕 New signup detected, waiting for auth to fully initialize...');
+        // Wait longer for auth provider to fully initialize after signup
+        const signupTimer = setTimeout(() => {
+          console.log('Starting data load after signup...');
+          // Verify user is still authenticated before loading
+          if (user) {
+            console.log('✅ User authenticated, loading data...');
+            loadAllServices();
+            loadCustomerBookings();
+            loadFavorites();
+            loadNotifications();
+            
+            // Remove signup param from URL after a moment
+            setTimeout(() => {
+              router.replace('/dashboard/customer');
+            }, 1000);
+          } else {
+            console.warn('⚠️ User not authenticated after signup wait, reloading page...');
+            window.location.reload();
+          }
+        }, 3000); // Increased to 3 seconds to ensure auth is ready
+        
+        return () => clearTimeout(signupTimer);
+      } else {
+        // Start loading - wait a bit for profile/auth to fully initialize
+        console.log('Starting data load for logged in user...');
+        // Small delay to ensure everything is ready
+        const loadTimer = setTimeout(() => {
+          console.log('Loading data now...');
+          loadAllServices();
+          loadCustomerBookings();
+          loadFavorites();
+          loadNotifications();
+        }, 1000); // Wait 1 second for profile/auth to initialize
+        
+        return () => clearTimeout(loadTimer);
+      }
+      
+      // Safety timeout - ensure loading states are cleared after 15 seconds (reduced from 20s)
+      const safetyTimer = setTimeout(() => {
+        console.warn('Safety timeout: Force clearing loading states after 15 seconds');
+        setLoading(false);
+        setBookingsLoading(false);
+        setFavoritesLoading(false);
+      }, 15000);
+      
+      return () => {
+        clearTimeout(safetyTimer);
+      };
+    }
+    // Note: We don't redirect here if user is not set
+    // The loading screen will show, and onAuthStateChange will set the user
+    // Only redirect if user is still null after a very long time (handled by loading screen timeout)
+  }, [user, profile, authLoading, searchParams, router]);
+
+  // Reload bookings when page gains focus (e.g., after returning from booking page)
+  useEffect(() => {
+    const handleFocus = () => {
+      if (user?.email) {
+        console.log('Page focused, reloading bookings...');
+        loadCustomerBookings();
+        loadNotifications();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [user]);
+
+  // Auto-refresh bookings every 15 seconds to catch business owner updates
+  useEffect(() => {
+    if (!user?.email) return;
+    
+    const interval = setInterval(() => {
+      console.log('Auto-refreshing bookings...');
+      loadCustomerBookings();
+      loadFavorites(); // Also refresh favorites
+    }, 15000); // Refresh every 15 seconds
+    
+    return () => clearInterval(interval);
+  }, [user]);
+
+  // Refresh notifications every 15 seconds
+  useEffect(() => {
+    if (!user?.email) return;
+    
+    const interval = setInterval(() => {
+      loadNotifications();
+    }, 15000);
+    
+    return () => clearInterval(interval);
+  }, [user]);
+
+  const loadAllServices = async () => {
+    try {
+      setLoading(true);
+      setServicesError(null);
+      
+      // Verify Supabase is configured
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      if (!supabaseUrl) {
+        console.error('Supabase URL is not configured');
+        setServices([]);
+        setLoading(false);
+        setServicesError('Configuration error: Supabase URL is missing.');
+        return;
+      }
+      
+      // Check if user is authenticated - use auth context first, then verify with session
+      // If user is available from auth context, skip session check to avoid timeout
+      if (!user) {
+        console.error('No user from auth context');
+        setServices([]);
+        setLoading(false);
+        setServicesError('No active session. Please log in again.');
+        return;
+      }
+
+      // Verify session with timeout (8 seconds - reduced from 20s)
+      let session: any = null;
+      try {
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Session timeout')), 8000)
+        );
+        
+        const result = await Promise.race([
+          sessionPromise.then((r: any) => ({ type: 'success', data: r.data })),
+          timeoutPromise.then(() => ({ type: 'timeout' }))
+        ]) as any;
+
+        if (result.type === 'timeout') {
+          console.warn('Session check timeout - but user is authenticated, proceeding anyway');
+          // Don't fail completely - user is authenticated from context
+          // Just log a warning and proceed
+        } else {
+          session = result.data?.session;
+          if (session) {
+            console.log('Session verified, user:', session.user.email);
+          } else {
+            console.warn('No session from getSession, but user exists in context - proceeding');
+          }
+        }
+      } catch (err: any) {
+        console.warn('Error checking session:', err);
+        // Don't fail completely if user is authenticated from context
+        // Just log the warning and proceed
+        if (err.message && err.message.includes('Failed to fetch')) {
+          console.warn('Network issue during session check, but user is authenticated - proceeding');
+        }
+      }
+      
+      // Load services with timeout
+      let servicesData: any = null;
+      let servicesError: any = null;
+      
+      try {
+        console.log('Querying business_profile_services...');
+        
+        // Try the full query directly with timeout
+        let queryResult: any;
+        try {
+          const queryPromise = supabase
+            .from('business_profile_services')
+            .select('*')
+            .eq('is_active', true)
+            .order('created_at', { ascending: false });
+
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Timeout')), 8000)
+          );
+
+          const result = await Promise.race([
+            queryPromise.then((r: any) => ({ type: 'success', data: r.data, error: r.error })),
+            timeoutPromise.then(() => ({ type: 'timeout' }))
+          ]) as any;
+
+          if (result.type === 'timeout') {
+            throw new Error('Query timeout');
+          }
+          
+          queryResult = result;
+        } catch (networkErr: any) {
+          console.error('Network error during services query:', networkErr);
+          setServices([]);
+          setLoading(false);
+          if (networkErr.message && networkErr.message.includes('Failed to fetch')) {
+            setServicesError('Network error: Cannot connect to Supabase. Please check your internet connection and Supabase configuration.');
+          } else {
+            setServicesError('Network error: Cannot connect to the server. Please check your internet connection and try refreshing the page.');
+          }
+          return;
+        }
+        
+        servicesData = queryResult.data;
+        servicesError = queryResult.error;
+      } catch (err: any) {
+        console.error('Services query error:', err);
+        servicesError = err;
+      }
+
+      if (servicesError) {
+        console.error('Error loading services:', servicesError);
+        console.error('Error details:', JSON.stringify(servicesError, null, 2));
+        setServices([]);
+        setLoading(false);
+        setServicesError('Error loading services: ' + (servicesError.message || 'Unknown error. Check console for details.'));
+        return;
+      }
+
+      if (!servicesData || servicesData.length === 0) {
+        console.log('No services found in database');
+        setServices([]);
+        setLoading(false);
+        return;
+      }
+
+      console.log('Loaded services from database:', servicesData.length);
+      console.log('Services data:', servicesData);
+
+      // Now load business profiles for each service
+      const businessProfileIds = Array.from(new Set(servicesData.map((s: any) => s.business_profile_id)));
+      
+      if (businessProfileIds.length === 0) {
+        setServices([]);
+        setLoading(false);
+        return;
+      }
+
+      let profilesData: any = null;
+      let profilesError: any = null;
+
+      try {
+        const queryPromise = supabase
+          .from('business_profiles')
+          .select('*')
+          .in('id', businessProfileIds);
+
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout')), 8000)
+        );
+
+        const result = await Promise.race([
+          queryPromise.then((r: any) => ({ type: 'success', data: r.data, error: r.error })),
+          timeoutPromise.then(() => ({ type: 'timeout' }))
+        ]) as any;
+
+        if (result.type === 'timeout') {
+          throw new Error('Query timeout');
+        }
+        
+        profilesData = result.data;
+        profilesError = result.error;
+      } catch (err: any) {
+        console.error('Profiles query error:', err);
+        profilesError = err;
+      }
+
+      if (profilesError) {
+        console.error('Error loading business profiles:', profilesError);
+        console.error('Profiles error details:', JSON.stringify(profilesError, null, 2));
+        // Still show services even if profiles fail
+        profilesData = [];
+      } else {
+        console.log('Loaded business profiles:', profilesData?.length || 0);
+      }
+
+      // Combine services with their business profiles
+      const servicesWithProfiles = servicesData.map((service: any) => {
+        const profile = profilesData?.find((p: any) => p.id === service.business_profile_id);
+        return {
+          ...service,
+          business_profile: profile || null
+        };
+      });
+
+      // Only filter out services without profiles if we have profile data
+      const validServices = profilesData && profilesData.length > 0
+        ? servicesWithProfiles.filter((s: any) => s.business_profile !== null)
+        : servicesWithProfiles;
+
+      console.log('Valid services with profiles:', validServices.length);
+      setServices(validServices as any);
+      setServicesError(null);
+
+      const bizIds = Array.from(
+        new Set(
+          (validServices as { business_profile_id?: string }[])
+            .map((s) => s.business_profile_id)
+            .filter(Boolean) as string[]
+        )
+      );
+      if (bizIds.length > 0) {
+        try {
+          const { data: revRows } = await supabase
+            .from('appointment_reviews')
+            .select('business_profile_id, rating')
+            .in('business_profile_id', bizIds);
+          const sums: Record<string, { sum: number; n: number }> = {};
+          for (const r of revRows || []) {
+            const id = (r as { business_profile_id: string }).business_profile_id;
+            if (!sums[id]) sums[id] = { sum: 0, n: 0 };
+            sums[id].sum += (r as { rating: number }).rating;
+            sums[id].n += 1;
+          }
+          const avgs: Record<string, number> = {};
+          Object.keys(sums).forEach((k) => {
+            avgs[k] = sums[k].sum / sums[k].n;
+          });
+          setBusinessRatingById(avgs);
+        } catch {
+          setBusinessRatingById({});
+        }
+      } else {
+        setBusinessRatingById({});
+      }
+    } catch (err: any) {
+      console.error('Error loading services:', err);
+      console.error('Error details:', err.message || err);
+      setServices([]);
+      // Show user-friendly error
+      if (err.message && err.message.includes('timeout')) {
+        setServicesError('Request timed out. This might be a network or database issue. Please try again.');
+      } else {
+        setServicesError('Error loading services: ' + (err.message || 'Unknown error'));
+      }
+    } finally {
+      setLoading(false);
+      console.log('loadAllServices completed, loading set to false');
+    }
+  };
+
+  const loadCustomerBookings = async () => {
+    if (!user?.email) {
+      console.log('No user email, skipping bookings load');
+      setBookingsLoading(false);
+      setBookings([]);
+      return;
+    }
+
+    // Set a maximum timeout to force clear loading state
+    let maxTimeout: NodeJS.Timeout | null = null;
+    
+    try {
+      setBookingsLoading(true);
+      console.log('Loading customer bookings for:', user.email);
+      
+      // Set timeout to force clear loading after 10 seconds (reduced from 15s)
+      maxTimeout = setTimeout(() => {
+        console.warn('Force clearing bookings loading after 10 seconds');
+        setBookingsLoading(false);
+        setBookings(prev => {
+          if (prev.length === 0) {
+            return [];
+          }
+          return prev;
+        });
+      }, 10000);
+      
+      // Load bookings with timeout
+      let data: any = null;
+      let error: any = null;
+
+      try {
+        // Use case-insensitive email matching and fetch ALL bookings regardless of status
+        // Query all bookings for this customer - no status filter to show all (pending, confirmed, completed, cancelled)
+        // Use the original structure to match display code expectations
+        const queryPromise = supabase
+          .from('business_profile_bookings')
+          .select(`
+            *,
+            business_profile_services (
+              id,
+              name,
+              description,
+              duration_minutes,
+              price,
+              color
+            ),
+            business_profiles (
+              id,
+              business_name,
+              logo_url,
+              business_slug
+            )
+          `)
+          .ilike('client_email', user.email.toLowerCase().trim()) // Case-insensitive match, normalized
+          .order('start_time', { ascending: false });
+
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout')), 8000)
+        );
+
+        const result = await Promise.race([
+          queryPromise.then((r: any) => {
+            console.log('Bookings query completed:', { 
+              count: r.data?.length || 0, 
+              error: r.error,
+              errorCode: r.error?.code,
+              errorMessage: r.error?.message,
+              userEmail: user.email
+            });
+            if (r.error) {
+              console.error('RLS Policy Error Details:', {
+                code: r.error.code,
+                message: r.error.message,
+                details: r.error.details,
+                hint: r.error.hint
+              });
+            }
+            return { type: 'success', data: r.data, error: r.error };
+          }),
+          timeoutPromise.then(() => ({ type: 'timeout' }))
+        ]) as any;
+
+        if (result.type === 'timeout') {
+          console.error('Bookings query timeout');
+          throw new Error('Query timeout');
+        }
+        
+        data = result.data;
+        error = result.error;
+      } catch (err: any) {
+        console.error('Bookings query error:', err);
+        if (err.message === 'Timeout' || err.message === 'Query timeout') {
+          error = { message: 'Request timeout - please check your connection' };
+        } else {
+          error = err;
+        }
+      }
+
+      // Clear the max timeout since we got a result
+      if (maxTimeout) {
+        clearTimeout(maxTimeout);
+      }
+
+      if (error) {
+        console.error('Error loading bookings:', error);
+        console.error('Error details:', JSON.stringify(error, null, 2));
+        console.error('Error code:', error.code);
+        console.error('Error message:', error.message);
+        
+        // Check if it's an RLS policy error
+        if (error.code === '42501' || error.message?.includes('permission denied') || error.message?.includes('policy')) {
+          console.error('RLS Policy Error: Customer may not have permission to view bookings');
+          console.error('Please ensure the migration 20251024000011_allow_customers_view_own_bookings.sql has been applied');
+          alert('Permission error: Please contact support. Error: ' + error.message);
+        }
+        
+        // Set empty array and clear loading even on error
+        setBookings([]);
+        setBookingsLoading(false);
+      } else {
+        console.log('Successfully loaded bookings:', data?.length || 0);
+        if (data && data.length > 0) {
+          console.log('Sample booking:', data[0]);
+        }
+        setBookings(data || []);
+        setBookingsLoading(false);
+        // Load notifications after bookings are loaded
+        loadNotifications();
+      }
+    } catch (err) {
+      console.error('Error loading customer bookings:', err);
+      setBookings([]);
+      setBookingsLoading(false);
+    } finally {
+      // Always clear loading state as a safety measure
+      if (maxTimeout) {
+        clearTimeout(maxTimeout);
+      }
+      console.log('Clearing bookings loading state in finally');
+      setBookingsLoading(false);
+    }
+  };
+
+  // Check if customer has an active booking for a service
+  const hasActiveBooking = (serviceId: string): boolean => {
+    if (!user?.email) return false;
+    return bookings.some(
+      booking => 
+        booking.service_id === serviceId && 
+        booking.client_email === user.email &&
+        (booking.status === 'pending' || booking.status === 'confirmed')
+    );
+  };
+
+  // Get active booking for a service
+  const getActiveBooking = (serviceId: string) => {
+    if (!user?.email) return null;
+    return bookings.find(
+      booking => 
+        booking.service_id === serviceId && 
+        booking.client_email === user.email &&
+        (booking.status === 'pending' || booking.status === 'confirmed')
+    );
+  };
+
+  const filteredBrowseServices = useMemo(() => {
+    let list = services;
+    if (filterCategory) {
+      const c = filterCategory.toLowerCase();
+      list = list.filter(
+        (s) => ((s as { service_category?: string | null }).service_category || '').toLowerCase() === c
+      );
+    }
+    const minP = parseFloat(filterMinPrice);
+    if (Number.isFinite(minP)) {
+      list = list.filter((s) => Number(s.price) >= minP);
+    }
+    const maxP = parseFloat(filterMaxPrice);
+    if (Number.isFinite(maxP)) {
+      list = list.filter((s) => Number(s.price) <= maxP);
+    }
+    const minStars = parseFloat(filterMinRating);
+    if (Number.isFinite(minStars) && minStars > 0) {
+      list = list.filter((s) => {
+        const avg = businessRatingById[s.business_profile_id];
+        return avg != null && avg >= minStars;
+      });
+    }
+    if (filterAcceptsNewOnly) {
+      list = list.filter((s) => {
+        const b = s.business_profile as BusinessProfile & { accepts_new_customers?: boolean };
+        return b?.accepts_new_customers !== false;
+      });
+    }
+    const maxKm = parseFloat(filterMaxKm);
+    if (userGeo && Number.isFinite(maxKm) && maxKm > 0) {
+      list = list.filter((s) => {
+        const b = s.business_profile as BusinessProfile & {
+          latitude?: number | null;
+          longitude?: number | null;
+        };
+        if (b.latitude == null || b.longitude == null) return false;
+        return haversineKm(userGeo.lat, userGeo.lon, b.latitude, b.longitude) <= maxKm;
+      });
+    }
+    return list;
+  }, [
+    services,
+    filterCategory,
+    filterMinPrice,
+    filterMaxPrice,
+    filterMinRating,
+    filterAcceptsNewOnly,
+    filterMaxKm,
+    userGeo,
+    businessRatingById,
+  ]);
+
+  const requestUserLocation = () => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      alert('Location is not available in this browser.');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserGeo({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+      },
+      () => alert('Could not read your location. Check browser permissions.')
+    );
+  };
+
+  const handleBookService = (service: BusinessProfileService & { business_profile: BusinessProfile }) => {
+    // Check if customer already has an active booking for this service
+    if (hasActiveBooking(service.id)) {
+      const activeBooking = getActiveBooking(service.id);
+      if (activeBooking) {
+        const bookingDate = new Date(activeBooking.start_time);
+        alert(
+          `You already have an active booking for this service.\n\n` +
+          `Status: ${activeBooking.status}\n` +
+          `Scheduled: ${bookingDate.toLocaleDateString()} at ${bookingDate.toLocaleTimeString()}\n\n` +
+          `Please cancel your existing booking first if you want to book again.`
+        );
+        return;
+      }
+    }
+    
+    const serviceSlug = generateServiceSlug(service.name);
+    router.push(`/booking/${serviceSlug}`);
+  };
+
+  const loadNotifications = async () => {
+    if (!user?.email) {
+      return;
+    }
+
+    try {
+      // Get bookings that were updated by business owner in the last 7 days
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      
+      const { data, error } = await supabase
+        .from('business_profile_bookings')
+        .select(`
+          *,
+          business_profile_services (
+            id,
+            name,
+            color
+          ),
+          business_profiles (
+            id,
+            business_name,
+            logo_url,
+            business_slug
+          )
+        `)
+        .eq('client_email', user.email)
+        .gte('updated_at', sevenDaysAgo.toISOString())
+        .order('updated_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading notifications:', error);
+        return;
+      }
+
+      // Filter for appointments that were changed by business owner (not by customer)
+      // If status changed to confirmed, completed, or cancelled, and updated_at is recent
+      const allBookings = data || [];
+      const notificationBookings = allBookings
+        .filter((b: any) => {
+          const updatedAt = new Date(b.updated_at);
+          const createdAt = new Date(b.created_at);
+          // If updated_at is significantly after created_at, it was likely changed by business owner
+          // OR if status is cancelled and updated recently, it's likely cancelled by business owner
+          const wasChangedByBusiness = updatedAt.getTime() - createdAt.getTime() > 60000;
+          
+          // Check if status is confirmed, completed, or cancelled (business owner actions)
+          const isBusinessAction = b.status === 'confirmed' || b.status === 'completed' || b.status === 'cancelled';
+          
+          // For cancelled appointments, show if updated recently (likely by business owner)
+          // For confirmed/completed, require that it was changed significantly after creation
+          if (b.status === 'cancelled') {
+            // Show cancelled appointments if updated in last 7 days (likely by business owner)
+            return isBusinessAction && updatedAt > sevenDaysAgo;
+          }
+          
+          return wasChangedByBusiness && isBusinessAction && updatedAt > sevenDaysAgo;
+        })
+        .map((b: any) => ({
+          ...b,
+          type: b.status === 'confirmed' ? 'confirmed' : b.status === 'completed' ? 'completed' : 'cancelled'
+        }))
+        .filter((n: any) => !dismissedNotifications.has(n.id));
+      
+      // Check which completed appointments don't have reviews yet
+      const completedBookings = notificationBookings.filter((n: any) => n.type === 'completed');
+      if (completedBookings.length > 0) {
+        const bookingIds = completedBookings.map((b: any) => b.id);
+        const { data: reviewsData } = await supabase
+          .from('appointment_reviews')
+          .select('booking_id')
+          .in('booking_id', bookingIds);
+        
+        const reviewedBookingIds = new Set((reviewsData || []).map((r: any) => r.booking_id));
+        // Mark which notifications need reviews
+        notificationBookings.forEach((n: any) => {
+          if (n.type === 'completed' && !reviewedBookingIds.has(n.id)) {
+            n.needsReview = true;
+          }
+        });
+      }
+      
+      setNotifications(notificationBookings);
+    } catch (err) {
+      console.error('Error loading notifications:', err);
+    }
+  };
+
+  const dismissNotification = (notificationId: string) => {
+    setDismissedNotifications(prev => new Set(Array.from(prev).concat(notificationId)));
+    setNotifications(prev => prev.filter((n: any) => n.id !== notificationId));
+  };
+
+  const dismissAllNotifications = () => {
+    notifications.forEach((n: any) => {
+      setDismissedNotifications(prev => new Set(Array.from(prev).concat(n.id)));
+    });
+    setNotifications([]);
+  };
+
+  const loadFavorites = async () => {
+    if (!user?.id) {
+      console.log('No user ID, skipping favorites load');
+      setFavoritesLoading(false);
+      return;
+    }
+
+    try {
+      setFavoritesLoading(true);
+      console.log('Loading favorites for user:', user.id);
+      
+      const queryPromise = supabase
+        .from('customer_favorites')
+        .select('booking_id, service_id')
+        .eq('user_id', user.id);
+
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout')), 10000)
+      );
+
+      const result = await Promise.race([
+        queryPromise.then((r: any) => ({ type: 'success', data: r.data, error: r.error })),
+        timeoutPromise.then(() => ({ type: 'timeout' }))
+      ]) as any;
+
+      if (result.type === 'timeout') {
+        console.error('Favorites query timeout');
+        setFavoriteBookings([]);
+        setFavoriteServices([]);
+      } else if (result.error) {
+        console.error('Error loading favorites:', result.error);
+        setFavoriteBookings([]);
+        setFavoriteServices([]);
+      } else {
+        console.log('Successfully loaded favorites:', result.data?.length || 0);
+        setFavoriteBookings((result.data || []).filter((f: any) => f.booking_id).map((f: any) => f.booking_id));
+        setFavoriteServices((result.data || []).filter((f: any) => f.service_id).map((f: any) => f.service_id));
+      }
+    } catch (err) {
+      console.error('Error loading favorites:', err);
+      setFavoriteBookings([]);
+      setFavoriteServices([]);
+    } finally {
+      console.log('Clearing favorites loading state');
+      setFavoritesLoading(false);
+    }
+  };
+
+  const toggleFavoriteBooking = async (bookingId: string) => {
+    if (!user?.id) return;
+
+    const isFavorite = favoriteBookings.includes(bookingId);
+
+    try {
+      if (isFavorite) {
+        // Remove from favorites
+        const { error } = await supabase
+          .from('customer_favorites')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('booking_id', bookingId);
+
+        if (error) {
+          console.error('Delete favorite error:', error);
+          throw error;
+        }
+        setFavoriteBookings(favoriteBookings.filter(id => id !== bookingId));
+      } else {
+        // Add to favorites
+        const { error } = await supabase
+          .from('customer_favorites')
+          .insert({
+            user_id: user.id,
+            booking_id: bookingId,
+            service_id: null
+          });
+
+        if (error) {
+          // If it's a duplicate, just refresh favorites instead of showing error
+          if (error.code === '23505' || error.message?.includes('duplicate key')) {
+            console.log('Already favorited, refreshing state...');
+            await loadFavorites();
+            return;
+          }
+          console.error('Insert favorite error:', error);
+          throw error;
+        }
+        setFavoriteBookings([...favoriteBookings, bookingId]);
+      }
+    } catch (err: any) {
+      console.error('Error toggling favorite booking:', err);
+      console.error('Error details:', JSON.stringify(err, null, 2));
+      const errorMsg = err?.message || err?.error?.message || 'Unknown error';
+      if (errorMsg.includes('relation') && errorMsg.includes('does not exist')) {
+        alert('Favorites feature not set up yet. Please run the database migration.');
+      } else if (errorMsg.includes('duplicate key')) {
+        // Already favorited, just refresh
+        await loadFavorites();
+      } else {
+        alert('Failed to update favorite: ' + errorMsg);
+      }
+    }
+  };
+
+  const toggleFavoriteService = async (serviceId: string) => {
+    if (!user?.id) return;
+
+    const isFavorite = favoriteServices.includes(serviceId);
+
+    try {
+      if (isFavorite) {
+        // Remove from favorites
+        const { error } = await supabase
+          .from('customer_favorites')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('service_id', serviceId);
+
+        if (error) {
+          console.error('Delete favorite error:', error);
+          throw error;
+        }
+        setFavoriteServices(favoriteServices.filter(id => id !== serviceId));
+      } else {
+        // Add to favorites
+        const { error } = await supabase
+          .from('customer_favorites')
+          .insert({
+            user_id: user.id,
+            service_id: serviceId,
+            booking_id: null
+          });
+
+        if (error) {
+          // If it's a duplicate, just refresh favorites instead of showing error
+          if (error.code === '23505' || error.message?.includes('duplicate key')) {
+            console.log('Already favorited, refreshing state...');
+            await loadFavorites();
+            return;
+          }
+          console.error('Insert favorite error:', error);
+          throw error;
+        }
+        setFavoriteServices([...favoriteServices, serviceId]);
+      }
+    } catch (err: any) {
+      console.error('Error toggling favorite service:', err);
+      console.error('Error details:', JSON.stringify(err, null, 2));
+      const errorMsg = err?.message || err?.error?.message || 'Unknown error';
+      if (errorMsg.includes('relation') && errorMsg.includes('does not exist')) {
+        alert('Favorites feature not set up yet. Please run the database migration.');
+      } else if (errorMsg.includes('duplicate key')) {
+        // Already favorited, just refresh
+        await loadFavorites();
+      } else {
+        alert('Failed to update favorite: ' + errorMsg);
+      }
+    }
+  };
+
+  // Calculate metrics from bookings
+  const now = new Date();
+  // Upcoming bookings: future appointments that are pending or confirmed (not cancelled or completed)
+  const upcomingBookings = bookings.filter((b: any) => {
+    const startTime = new Date(b.start_time);
+    const isFuture = startTime >= now;
+    const isActive = ['pending', 'confirmed'].includes(b.status);
+    return isFuture && isActive;
+  });
+  // Past bookings: appointments that are in the past OR completed OR cancelled (regardless of date)
+  const pastBookings = bookings.filter((b: any) => {
+    const startTime = new Date(b.start_time);
+    const isPast = startTime < now;
+    const isCompleted = b.status === 'completed';
+    const isCancelled = b.status === 'cancelled';
+    // Include: past appointments (not cancelled), completed appointments, or any cancelled appointments
+    return (isPast && !isCancelled) || isCompleted || isCancelled;
+  });
+  // Completed bookings: only those with status 'completed'
+  const completedBookings = bookings.filter((b: any) => b.status === 'completed');
+  const favoriteBookingsList = bookings.filter((b: any) => favoriteBookings.includes(b.id));
+  const favoriteServicesList = services.filter((s: any) => favoriteServices.includes(s.id));
+  const totalFavorites = favoriteBookings.length + favoriteServices.length;
+
+  // Redirect timer - only redirect if user is still not set after 15 seconds
+  // This must be before any conditional returns (React hooks rule)
+  // Increased timeout to prevent redirect loops
+  useEffect(() => {
+    // Always return a cleanup function to maintain consistent hook count
+    let redirectTimer: NodeJS.Timeout | null = null;
+    
+    if (!authLoading && !user) {
+      redirectTimer = setTimeout(() => {
+        // Final check - only redirect if user is still not set
+        console.log('User still not set after 15 seconds - redirecting to login');
+        // Use window.location to force a full page reload and break any loops
+        window.location.href = '/login';
+      }, 15000); // Wait 15 seconds for onAuthStateChange to fire
+    }
+    
+    return () => {
+      if (redirectTimer) clearTimeout(redirectTimer);
+    };
+  }, [authLoading, user]);
+
+  // Show loading screen while auth is initializing
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-sm text-muted-foreground">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // If user is not set after auth loading is done, show loading while we wait
+  // onAuthStateChange will fire and set the user
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-sm text-muted-foreground">Initializing session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't block the entire page - show content even if services are loading
+  // Only show loading for the services section itself
+
+  return (
+    <Section className="space-y-ds-4 sm:space-y-ds-5 lg:space-y-ds-6">
+      {/* Customer Header - Professional Design */}
+      <div className="bg-[#070c18] rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 text-white shadow-lg border border-white/[0.06]">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 sm:gap-3 mb-2">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
+                <User className="h-5 w-5 sm:h-6 sm:w-6" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold truncate">Welcome, {userName}!</h1>
+                <p className="text-white/90 text-sm sm:text-base lg:text-lg mt-1">Customer Dashboard</p>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+            <div className="hidden sm:flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full bg-white/20 backdrop-blur-sm border border-white/30">
+              <User className="h-4 w-4" />
+              <span className="text-xs sm:text-sm font-medium">Customer Portal</span>
+            </div>
+            <InboxBell variant="onPrimary" className="h-9 w-9 shrink-0" />
+            <div className="relative flex-1 sm:flex-initial">
+              <Button
+                onClick={() => setShowNotifications(true)}
+                variant="outline"
+                size="sm"
+                className="bg-white/10 hover:bg-white/20 border-white/30 text-white backdrop-blur-sm relative w-full sm:w-auto"
+              >
+                <Bell className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Notifications</span>
+                {notifications.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                    {notifications.length}
+                  </span>
+                )}
+              </Button>
+            </div>
+            <Button
+              onClick={signOut}
+              variant="outline"
+              size="sm"
+              className="bg-white/10 hover:bg-white/20 border-white/30 text-white backdrop-blur-sm hidden sm:flex"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Customer Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <Card className="group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-2 rounded-2xl shadow-md">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-t-2xl">
+            <CardTitle className="text-sm font-medium">My Bookings</CardTitle>
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-600 flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
+              <BookOpen className="h-5 w-5 text-white" />
+            </div>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">{bookings.length}</div>
+            <p className="text-sm text-muted-foreground mt-1">Total bookings</p>
+          </CardContent>
+        </Card>
+
+        <Card className="group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-2 rounded-2xl shadow-md">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 bg-gradient-to-br from-green-50 to-emerald-50 rounded-t-2xl">
+            <CardTitle className="text-sm font-medium">Upcoming</CardTitle>
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-600 to-emerald-600 flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
+              <Calendar className="h-5 w-5 text-white" />
+            </div>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <div className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">{upcomingBookings.length}</div>
+            <p className="text-sm text-muted-foreground mt-1">Scheduled appointments</p>
+          </CardContent>
+        </Card>
+
+        <Card className="group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-2 rounded-2xl shadow-md">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 bg-gradient-to-br from-teal-50 to-cyan-50 rounded-t-2xl">
+            <CardTitle className="text-sm font-medium">Completed</CardTitle>
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-600 to-cyan-600 flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
+              <CheckCircle2 className="h-5 w-5 text-white" />
+            </div>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <div className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent">{completedBookings.length}</div>
+            <p className="text-sm text-muted-foreground mt-1">Past appointments</p>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-2 w-full text-xs"
+              onClick={() => router.push('/dashboard/customer/bookings')}
+            >
+              Manage All Bookings →
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-2 rounded-2xl shadow-md">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 bg-gradient-to-br from-orange-50 to-amber-50 rounded-t-2xl">
+            <CardTitle className="text-sm font-medium">Favorites</CardTitle>
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-600 to-amber-600 flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
+              <Star className="h-5 w-5 text-white" />
+            </div>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <div className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">{totalFavorites}</div>
+            <p className="text-sm text-muted-foreground mt-1">Saved items</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="border border-gray-200 bg-blue-50/50 rounded-2xl">
+        <CardContent className="py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <p className="font-medium text-violet-900 dark:text-violet-100">Booking preferences</p>
+            <p className="text-sm text-muted-foreground">
+              Save favorite staff, usual times, allergies, and notes per business for faster checkout.
+            </p>
+          </div>
+          <Button
+            variant="secondary"
+            className="shrink-0"
+            onClick={() => router.push('/dashboard/customer/preferences')}
+          >
+            Manage preferences
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Customer Content - Different Layout */}
+      <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
+        <Card className="border-2 hover:shadow-xl transition-all duration-300 rounded-2xl shadow-md">
+          <CardHeader className="bg-gradient-to-r from-blue-50 via-cyan-50 to-indigo-50 border-b rounded-t-2xl">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-xl">My Upcoming Bookings</CardTitle>
+              <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+                <Calendar className="h-3 w-3 mr-1" />
+                {upcomingBookings.length}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-6">
+            {bookingsLoading && bookings.length === 0 ? (
+              <div className="text-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-blue-600 mx-auto" />
+                <p className="text-sm text-muted-foreground mt-2">Loading bookings...</p>
+              </div>
+            ) : upcomingBookings.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-600 flex items-center justify-center mx-auto mb-4 opacity-60">
+                  <Calendar className="h-8 w-8 text-white" />
+                </div>
+                <p className="font-medium">No upcoming bookings</p>
+                <p className="text-sm mt-1">Your scheduled appointments will appear here</p>
+                <div className="flex gap-2 justify-center mt-4">
+                  <Button
+                    className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white border-0"
+                    onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })}
+                  >
+                    Browse Services
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => router.push('/dashboard/customer/bookings')}
+                  >
+                    View All Bookings
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {upcomingBookings.slice(0, 5).map((booking) => {
+                  const startDate = new Date(booking.start_time);
+                  const service = booking.business_profile_services;
+                  const business = booking.business_profiles;
+                  
+                  return (
+                    <div
+                      key={booking.id}
+                      className="flex items-center justify-between p-3 rounded-lg border bg-white dark:bg-slate-900 hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          {business?.logo_url && (
+                            <img
+                              src={business.logo_url}
+                              alt={business.business_name}
+                              className="w-6 h-6 object-contain rounded"
+                            />
+                          )}
+                          <p className="font-semibold text-sm">{service?.name || 'Service'}</p>
+                          <Badge
+                            variant={booking.status === 'confirmed' ? 'default' : booking.status === 'pending' ? 'secondary' : 'outline'}
+                            className={`text-xs ${
+                              booking.status === 'confirmed' 
+                                ? 'bg-green-500 text-white hover:bg-green-600' 
+                                : booking.status === 'pending'
+                                ? 'bg-yellow-500 text-white hover:bg-yellow-600'
+                                : ''
+                            }`}
+                          >
+                            {booking.status === 'confirmed' ? 'Confirmed ✓' : booking.status === 'pending' ? 'Pending' : booking.status}
+                          </Badge>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 ml-auto"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleFavoriteBooking(booking.id);
+                            }}
+                          >
+                            <Star
+                              className={`h-4 w-4 ${
+                                favoriteBookings.includes(booking.id)
+                                  ? 'fill-amber-500 text-amber-500'
+                                  : 'text-muted-foreground'
+                              }`}
+                            />
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{business?.business_name}</p>
+                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {startDate.toLocaleDateString()}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold text-sm">${Number(booking.amount || 0).toFixed(2)}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+                {upcomingBookings.length > 5 && (
+                  <div className="pt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => router.push('/dashboard/customer/bookings')}
+                    >
+                      View All {upcomingBookings.length} Bookings
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-2 border-rose-200 dark:border-rose-800 hover:shadow-xl transition-all duration-300">
+          <CardHeader className="border-b border-gray-100">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-xl text-rose-900 dark:text-rose-100">Booking History</CardTitle>
+              <Badge variant="secondary" className="bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400">
+                <Clock className="h-3 w-3 mr-1" />
+                {pastBookings.length}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-6">
+            {bookingsLoading && bookings.length === 0 ? (
+              <div className="text-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-slate-600 mx-auto" />
+                <p className="text-sm text-muted-foreground mt-2">Loading history...</p>
+              </div>
+            ) : pastBookings.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <div className="w-12 h-12 rounded-xl bg-gray-200 flex items-center justify-center mx-auto mb-3">
+                  <BookOpen className="h-8 w-8 text-white" />
+                </div>
+                <p className="font-medium">No booking history</p>
+                <p className="text-sm mt-1">Your past appointments will be shown here</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {pastBookings.slice(0, 5).map((booking) => {
+                  const startDate = new Date(booking.start_time);
+                  const service = booking.business_profile_services;
+                  const business = booking.business_profiles;
+                  
+                  return (
+                    <div
+                      key={booking.id}
+                      className="flex items-center justify-between p-3 rounded-lg border bg-white dark:bg-slate-900 hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          {business?.logo_url && (
+                            <img
+                              src={business.logo_url}
+                              alt={business.business_name}
+                              className="w-6 h-6 object-contain rounded"
+                            />
+                          )}
+                          <p className="font-semibold text-sm">{service?.name || 'Service'}</p>
+                          <Badge
+                            variant={
+                              booking.status === 'completed' 
+                                ? 'default' 
+                                : booking.status === 'cancelled'
+                                ? 'destructive'
+                                : 'secondary'
+                            }
+                            className="text-xs"
+                          >
+                            {booking.status === 'cancelled' ? 'Cancelled' : booking.status}
+                          </Badge>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 ml-auto"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleFavoriteBooking(booking.id);
+                            }}
+                          >
+                            <Star
+                              className={`h-4 w-4 ${
+                                favoriteBookings.includes(booking.id)
+                                  ? 'fill-amber-500 text-amber-500'
+                                  : 'text-muted-foreground'
+                              }`}
+                            />
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{business?.business_name}</p>
+                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {startDate.toLocaleDateString()}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold text-sm">${Number(booking.amount || 0).toFixed(2)}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+                {pastBookings.length > 5 && (
+                  <p className="text-xs text-center text-muted-foreground pt-2">
+                    +{pastBookings.length - 5} more bookings
+                  </p>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Favorites Section */}
+      {(favoriteBookingsList.length > 0 || favoriteServicesList.length > 0) && (
+        <div>
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="font-display text-3xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
+                Favorites
+              </h2>
+              <p className="text-muted-foreground mt-1">
+                Your saved appointments and services
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            {/* Favorite Appointments */}
+            {favoriteBookingsList.map((booking) => {
+              const startDate = new Date(booking.start_time);
+              const service = booking.business_profile_services;
+              const business = booking.business_profiles;
+              
+              return (
+                <Card
+                  key={booking.id}
+                  className="border-2 border-amber-200 dark:border-amber-800 hover:shadow-xl transition-all duration-300"
+                >
+                  <CardHeader className="border-b border-gray-100">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {business?.logo_url && (
+                          <img
+                            src={business.logo_url}
+                            alt={business.business_name}
+                            className="w-8 h-8 object-contain rounded"
+                          />
+                        )}
+                        <div>
+                          <CardTitle className="text-lg">{service?.name || 'Service'}</CardTitle>
+                          <p className="text-xs text-muted-foreground">{business?.business_name}</p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={() => toggleFavoriteBooking(booking.id)}
+                      >
+                        <Star className="h-5 w-5 fill-amber-500 text-amber-500" />
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <span>{startDate.toLocaleDateString()}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        <span>{startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                      <div className="flex items-center justify-between pt-2">
+                        <Badge
+                          variant={booking.status === 'confirmed' ? 'default' : 'secondary'}
+                          className="text-xs"
+                        >
+                          {booking.status}
+                        </Badge>
+                        <span className="font-semibold text-sm">${Number(booking.amount || 0).toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+            
+            {/* Favorite Services */}
+            {favoriteServicesList.map((service) => {
+              const business = service.business_profile as BusinessProfile | null;
+              if (!business) return null;
+              
+              return (
+                <Card
+                  key={service.id}
+                  className="border-2 border-amber-200 dark:border-amber-800 hover:shadow-xl transition-all duration-300"
+                >
+                  <CardHeader className="border-b border-gray-100">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {business?.logo_url && (
+                          <img
+                            src={business.logo_url}
+                            alt={business.business_name}
+                            className="w-8 h-8 object-contain rounded"
+                          />
+                        )}
+                        <div>
+                          <CardTitle className="text-lg">{service.name}</CardTitle>
+                          <p className="text-xs text-muted-foreground">{business?.business_name}</p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={() => toggleFavoriteService(service.id)}
+                      >
+                        <Star className="h-5 w-5 fill-amber-500 text-amber-500" />
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-4">
+                    <div className="space-y-2">
+                      {service.description && (
+                        <p className="text-sm text-muted-foreground line-clamp-2">{service.description}</p>
+                      )}
+                      <div className="flex items-center gap-4 text-sm">
+                        <div className="flex items-center gap-1 text-muted-foreground">
+                          <Clock className="h-4 w-4" />
+                          <span>{service.duration_minutes} min</span>
+                        </div>
+                        <div className="flex items-center gap-1 font-semibold text-amber-600 dark:text-amber-400">
+                          <DollarSign className="h-4 w-4" />
+                          <span>${Number(service.price).toFixed(2)}</span>
+                        </div>
+                      </div>
+                      {hasActiveBooking(service.id) ? (
+                        <div className="space-y-2 mt-3">
+                          <Button
+                            className="w-full bg-gray-400 hover:bg-gray-500 cursor-not-allowed"
+                            disabled
+                          >
+                            <AlertCircle className="h-4 w-4 mr-2" />
+                            Already Booked
+                          </Button>
+                          <p className="text-xs text-muted-foreground text-center">
+                            You have an active booking for this service. Cancel it first to book again.
+                          </p>
+                        </div>
+                      ) : (
+                        <Button
+                          className="w-full mt-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white border-0"
+                          onClick={() => handleBookService(service)}
+                        >
+                          <Calendar className="h-4 w-4 mr-2" />
+                          Book Now
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Available Services Section */}
+      <div>
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
+          <div>
+            <h2 className="font-display text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
+              Available Services
+            </h2>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">
+              Browse and book services from all businesses
+            </p>
+          </div>
+        </div>
+
+        {loading ? (
+          <Card className="border-2 border-blue-200 dark:border-blue-800">
+            <CardContent className="pt-12 pb-12 text-center">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto" />
+              <p className="text-sm text-muted-foreground mt-4">Loading services...</p>
+              <p className="text-xs text-muted-foreground mt-2">This may take a few moments</p>
+            </CardContent>
+          </Card>
+        ) : servicesError ? (
+          <Card className="border-2 border-red-200 dark:border-red-800">
+            <CardContent className="pt-12 pb-12 text-center">
+              <AlertCircle className="h-8 w-8 text-red-600 mx-auto mb-4" />
+              <p className="font-medium text-red-600 dark:text-red-400 mb-2">Error Loading Services</p>
+              <p className="text-sm text-muted-foreground mb-4">{servicesError}</p>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setServicesError(null);
+                  loadAllServices();
+                }}
+              >
+                Try Again
+              </Button>
+            </CardContent>
+          </Card>
+        ) : services.length === 0 ? (
+          <Card className="border-2 border-blue-200 dark:border-blue-800">
+            <CardContent className="pt-12 pb-12 text-center">
+              <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center mx-auto mb-3">
+                <BookOpen className="h-8 w-8 text-white" />
+              </div>
+              <p className="font-medium text-muted-foreground mb-2">No services available</p>
+              <p className="text-sm text-muted-foreground">Check back later for new services</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            <Card className="mb-6 border-2 border-slate-200 dark:border-slate-800">
+              <CardHeader>
+                <CardTitle className="text-lg">Search & filters</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Narrow by category, price, ratings, distance, and whether the business accepts new clients.
+                </p>
+              </CardHeader>
+              <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="space-y-2">
+                  <Label>Service type</Label>
+                  <Select value={filterCategory || '__all__'} onValueChange={(v) => setFilterCategory(v === '__all__' ? '' : v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All types" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SERVICE_CATEGORY_OPTIONS.map((o) => (
+                        <SelectItem key={o.value || 'all'} value={o.value || '__all__'}>
+                          {o.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Min price ($)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={filterMinPrice}
+                    onChange={(e) => setFilterMinPrice(e.target.value)}
+                    placeholder="0"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Max price ($)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={filterMaxPrice}
+                    onChange={(e) => setFilterMaxPrice(e.target.value)}
+                    placeholder="Any"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Minimum rating</Label>
+                  <Select value={filterMinRating} onValueChange={setFilterMinRating}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">Any rating</SelectItem>
+                      <SelectItem value="4">4+ stars only</SelectItem>
+                      <SelectItem value="4.5">4.5+ stars</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Near me (max km)</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      min={1}
+                      value={filterMaxKm}
+                      onChange={(e) => setFilterMaxKm(e.target.value)}
+                      placeholder="e.g. 10"
+                      className="flex-1"
+                    />
+                    <Button type="button" variant="outline" onClick={requestUserLocation}>
+                      <MapPin className="h-4 w-4 mr-1" />
+                      Loc
+                    </Button>
+                  </div>
+                  {userGeo && (
+                    <p className="text-xs text-muted-foreground">Using your current location for distance.</p>
+                  )}
+                </div>
+                <div className="flex items-end gap-2 pb-2">
+                  <Checkbox
+                    id="accepts_new"
+                    checked={filterAcceptsNewOnly}
+                    onCheckedChange={(c) => setFilterAcceptsNewOnly(c === true)}
+                  />
+                  <Label htmlFor="accepts_new" className="text-sm font-normal cursor-pointer">
+                    Accepting new customers only
+                  </Label>
+                </div>
+              </CardContent>
+            </Card>
+
+            {filteredBrowseServices.length === 0 ? (
+              <Card className="border-2 border-amber-200 dark:border-amber-800">
+                <CardContent className="py-10 text-center space-y-3">
+                  <p className="font-medium">No services match your filters</p>
+                  <p className="text-sm text-muted-foreground">Try clearing filters or widening price / distance.</p>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setFilterCategory('');
+                      setFilterMinPrice('');
+                      setFilterMaxPrice('');
+                      setFilterMinRating('0');
+                      setFilterMaxKm('');
+                      setFilterAcceptsNewOnly(false);
+                    }}
+                  >
+                    Clear filters
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            {filteredBrowseServices.map((service) => {
+              const business = service.business_profile as BusinessProfile | null;
+              if (!business) return null;
+              
+              return (
+                <Card
+                  key={service.id}
+                  className="border-2 border-blue-200 dark:border-blue-800 hover:shadow-xl transition-all duration-300 cursor-pointer group"
+                  onClick={() => handleBookService(service)}
+                >
+                  <CardHeader className="border-b border-gray-100">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          {business?.logo_url && (
+                            <img
+                              src={business.logo_url}
+                              alt={business.business_name || 'Business'}
+                              className="w-8 h-8 object-contain rounded"
+                            />
+                          )}
+                          <div className="flex-1">
+                            <CardTitle className="text-lg text-blue-900 dark:text-blue-100">
+                              {service.name}
+                            </CardTitle>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {business?.business_name || 'Business'}
+                            </p>
+                            {businessRatingById[business.id] != null && (
+                              <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1 mt-1">
+                                <Star className="h-3 w-3 fill-amber-400 text-amber-500 shrink-0" />
+                                {businessRatingById[business.id].toFixed(1)} avg
+                              </p>
+                            )}
+                            {(service as { service_category?: string | null }).service_category ? (
+                              <Badge variant="outline" className="mt-1 text-[10px] capitalize">
+                                {(service as { service_category?: string }).service_category}
+                              </Badge>
+                            ) : null}
+                          </div>
+                        </div>
+                        <Badge variant="secondary" className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
+                          <CheckCircle2 className="h-3 w-3 mr-1" />
+                          Active
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-5 h-5 rounded-full shadow-sm"
+                          style={{ backgroundColor: service.color }}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleFavoriteService(service.id);
+                          }}
+                        >
+                          <Star
+                            className={`h-4 w-4 ${
+                              favoriteServices.includes(service.id)
+                                ? 'fill-amber-500 text-amber-500'
+                                : 'text-muted-foreground'
+                            }`}
+                          />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-6">
+                    {service.description && (
+                      <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                        {service.description}
+                      </p>
+                    )}
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-4 text-sm">
+                        <div className="flex items-center gap-1 text-muted-foreground">
+                          <Clock className="h-4 w-4" />
+                          <span>{service.duration_minutes} min</span>
+                        </div>
+                        <div className="flex items-center gap-1 font-semibold text-blue-600 dark:text-blue-400">
+                          <DollarSign className="h-4 w-4" />
+                          <span>${Number(service.price).toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </div>
+                    {hasActiveBooking(service.id) ? (
+                      <div className="space-y-2">
+                        <Button
+                          className="w-full bg-gray-400 hover:bg-gray-500 cursor-not-allowed"
+                          disabled
+                        >
+                          <AlertCircle className="h-4 w-4 mr-2" />
+                          Already Booked
+                        </Button>
+                        <p className="text-xs text-muted-foreground text-center">
+                          You have an active booking for this service. Cancel it first to book again.
+                        </p>
+                      </div>
+                    ) : (
+                      <Button
+                        className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white border-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleBookService(service);
+                        }}
+                      >
+                        <Calendar className="h-4 w-4 mr-2" />
+                        Book Now
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Notifications Dialog */}
+      <Dialog open={showNotifications} onOpenChange={setShowNotifications}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle>Notifications</DialogTitle>
+                <DialogDescription>
+                  Updates about your appointments from business owners
+                </DialogDescription>
+              </div>
+              {notifications.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={dismissAllNotifications}
+                >
+                  Dismiss All
+                </Button>
+              )}
+            </div>
+          </DialogHeader>
+          <div className="space-y-3 mt-4">
+            {notifications.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <CheckCircle2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No new notifications</p>
+              </div>
+            ) : (
+              notifications.map((notification) => {
+                const startDate = new Date(notification.start_time);
+                const service = notification.business_profile_services;
+                const business = notification.business_profiles;
+                
+                return (
+                  <div
+                    key={notification.id}
+                    className={`p-4 rounded-lg border ${
+                      notification.type === 'cancelled'
+                        ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800'
+                        : notification.type === 'confirmed'
+                        ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800'
+                        : 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          {notification.type === 'cancelled' ? (
+                            <AlertCircle className="h-5 w-5 text-red-600" />
+                          ) : notification.type === 'confirmed' ? (
+                            <CheckCircle2 className="h-5 w-5 text-green-600" />
+                          ) : (
+                            <CheckCircle2 className="h-5 w-5 text-blue-600" />
+                          )}
+                          <Badge
+                            variant={
+                              notification.type === 'cancelled' 
+                                ? 'destructive' 
+                                : notification.type === 'confirmed'
+                                ? 'default'
+                                : 'secondary'
+                            }
+                          >
+                            {notification.type === 'cancelled' 
+                              ? 'Cancelled by Business' 
+                              : notification.type === 'confirmed'
+                              ? 'Confirmed'
+                              : 'Completed'}
+                          </Badge>
+                        </div>
+                        <p className="font-semibold mb-1">{service?.name || 'Service'}</p>
+                        <p className="text-sm text-muted-foreground mb-1">
+                          {business?.business_name}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {notification.type === 'cancelled' 
+                            ? `Your appointment was cancelled on ${new Date(notification.updated_at).toLocaleString()}`
+                            : notification.type === 'confirmed'
+                            ? `Your appointment was confirmed on ${new Date(notification.updated_at).toLocaleString()}`
+                            : `Your appointment was marked as completed on ${new Date(notification.updated_at).toLocaleString()}`
+                          }
+                        </p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Scheduled for: {startDate.toLocaleString()}
+                        </p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => dismissNotification(notification.id)}
+                        className="ml-2"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="mt-3 pt-3 border-t space-y-2">
+                      {notification.needsReview && notification.type === 'completed' && (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className="w-full bg-blue-600 hover:bg-blue-500"
+                          onClick={() => {
+                            setShowNotifications(false);
+                            router.push(`/dashboard/customer/bookings?review=${notification.id}`);
+                          }}
+                        >
+                          Leave Review & Feedback
+                        </Button>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => {
+                          setShowNotifications(false);
+                          router.push('/dashboard/customer/bookings');
+                        }}
+                      >
+                        View in My Bookings
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </Section>
+  );
+}
+

@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./node_modules/.bin/tsc --noEmit)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "PowerShell(npx uipro-cli --help 2>&1)",
+      "Bash(npm run *)"
+    ]
+  }
+}
