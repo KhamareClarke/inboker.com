@@ -4,17 +4,6 @@ import { sendEmail, emailTemplates } from '@/lib/email';
 import { sendNotification } from '@/lib/notifications';
 import { normalizeSupabaseUrl } from '@/lib/supabase-env';
 
-const supabaseUrl =
-  normalizeSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL) ??
-  process.env.NEXT_PUBLIC_SUPABASE_URL!;
-
-const supabaseAdmin = createClient(supabaseUrl, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  },
-});
-
 /**
  * Cron job to send trial ending reminder emails
  * Should be called daily (e.g., at 9 AM)
@@ -30,6 +19,12 @@ const supabaseAdmin = createClient(supabaseUrl, process.env.SUPABASE_SERVICE_ROL
  * - Include Authorization header: Bearer {CRON_SECRET}
  */
 export async function POST(req: NextRequest) {
+  const supabaseAdmin = createClient(
+    (normalizeSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL) ?? process.env.NEXT_PUBLIC_SUPABASE_URL) as string,
+    process.env.SUPABASE_SERVICE_ROLE_KEY as string,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
+
   try {
     // Verify cron secret
     const authHeader = req.headers.get('authorization');

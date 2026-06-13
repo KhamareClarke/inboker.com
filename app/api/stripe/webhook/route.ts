@@ -12,17 +12,19 @@ import { normalizeSupabaseUrl } from '@/lib/supabase-env';
 import { triggerEmpireOsEvent } from '@/lib/empire-os/events';
 import { emitEmpireActivity } from '@/lib/empire-activity';
 
-const supabaseAdmin = createClient(
-  (normalizeSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL) ??
-    process.env.NEXT_PUBLIC_SUPABASE_URL) as string,
-  process.env.SUPABASE_SERVICE_ROLE_KEY as string,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
+let _supabaseAdmin: ReturnType<typeof createClient> | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function supabaseAdmin(): any {
+  if (!_supabaseAdmin) {
+    _supabaseAdmin = createClient(
+      (normalizeSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL) ??
+        process.env.NEXT_PUBLIC_SUPABASE_URL) as string,
+      process.env.SUPABASE_SERVICE_ROLE_KEY as string,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    );
   }
-);
+  return _supabaseAdmin;
+}
 
 /** Safely convert Unix timestamp (seconds) to ISO string; return null if invalid. */
 function toISOOrNull(unixSeconds: number | null | undefined): string | null {
@@ -42,7 +44,7 @@ function formatRenewalHuman(iso: string) {
 }
 
 async function empireBusinessIdForUser(userId: string): Promise<string | null> {
-  const { data } = await supabaseAdmin
+  const { data } = await supabaseAdmin()
     .from('business_profiles')
     .select('id')
     .eq('user_id', userId)
@@ -106,7 +108,7 @@ export async function POST(req: NextRequest) {
             console.error('Invalid period dates from Stripe', { currentPeriodStart, currentPeriodEnd });
           }
 
-          await supabaseAdmin
+          await supabaseAdmin()
             .from('subscriptions')
             .upsert({
               user_id: userId,
@@ -138,7 +140,7 @@ export async function POST(req: NextRequest) {
           );
 
           void (async () => {
-            const { data: u } = await supabaseAdmin
+            const { data: u } = await supabaseAdmin()
               .from('users')
               .select('email, full_name')
               .eq('id', userId)
@@ -163,7 +165,7 @@ export async function POST(req: NextRequest) {
           // Send welcome email if trial just started
           if (status === 'trialing' && trialEndISO) {
             try {
-              const { data: userData } = await supabaseAdmin
+              const { data: userData } = await supabaseAdmin()
                 .from('users')
                 .select('email, full_name')
                 .eq('id', userId)
@@ -221,7 +223,7 @@ export async function POST(req: NextRequest) {
         if (periodStartISO) updatePayload.current_period_start = periodStartISO;
         if (periodEndISO) updatePayload.current_period_end = periodEndISO;
 
-        await supabaseAdmin
+        await supabaseAdmin()
           .from('subscriptions')
           .update(updatePayload)
           .eq('user_id', userId);
@@ -239,7 +241,7 @@ export async function POST(req: NextRequest) {
           break;
         }
 
-        await supabaseAdmin
+        await supabaseAdmin()
           .from('subscriptions')
           .update({
             status: 'cancelled',
@@ -250,7 +252,7 @@ export async function POST(req: NextRequest) {
         console.log(`Subscription cancelled for user ${userId}`);
 
         void (async () => {
-          const { data: u } = await supabaseAdmin
+          const { data: u } = await supabaseAdmin()
             .from('users')
             .select('email, full_name')
             .eq('id', userId)
@@ -281,7 +283,7 @@ export async function POST(req: NextRequest) {
           if (!userId) break;
 
           // Check current subscription status in database
-          const { data: currentSubscription } = await supabaseAdmin
+          const { data: currentSubscription } = await supabaseAdmin()
             .from('subscriptions')
             .select('status, trial_end')
             .eq('user_id', userId)
@@ -310,7 +312,7 @@ export async function POST(req: NextRequest) {
           if (periodStartISO) invoiceUpdatePayload.current_period_start = periodStartISO;
           if (periodEndISO) invoiceUpdatePayload.current_period_end = periodEndISO;
 
-          await supabaseAdmin
+          await supabaseAdmin()
             .from('subscriptions')
             .update(invoiceUpdatePayload)
             .eq('user_id', userId);
@@ -334,7 +336,7 @@ export async function POST(req: NextRequest) {
           );
 
           void (async () => {
-            const { data: u } = await supabaseAdmin
+            const { data: u } = await supabaseAdmin()
               .from('users')
               .select('email, full_name')
               .eq('id', userId)
@@ -358,13 +360,13 @@ export async function POST(req: NextRequest) {
           // Send trial ended email if this is the first payment after trial
           if (wasTrialing) {
             try {
-              const { data: userData } = await supabaseAdmin
+              const { data: userData } = await supabaseAdmin()
                 .from('users')
                 .select('email, full_name')
                 .eq('id', userId)
                 .single();
 
-              const { data: subscriptionData } = await supabaseAdmin
+              const { data: subscriptionData } = await supabaseAdmin()
                 .from('subscriptions')
                 .select('stripe_price_id')
                 .eq('user_id', userId)
@@ -407,7 +409,7 @@ export async function POST(req: NextRequest) {
 
           if (isRecurringRenewal) {
             try {
-              const { data: renewalUser } = await supabaseAdmin
+              const { data: renewalUser } = await supabaseAdmin()
                 .from('users')
                 .select('email, full_name')
                 .eq('id', userId)
@@ -455,7 +457,7 @@ export async function POST(req: NextRequest) {
           const userId = subscription.metadata?.userId;
           if (!userId) break;
 
-          await supabaseAdmin
+          await supabaseAdmin()
             .from('subscriptions')
             .update({
               status: 'past_due',

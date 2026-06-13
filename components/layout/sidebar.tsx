@@ -5,14 +5,13 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard,
-  Calendar,
+  Calendar as CalendarIcon,
   Users,
   UserCircle,
   BookOpen,
   Briefcase,
   Settings,
   LogOut,
-  Calendar as CalendarIcon,
   Palette,
   CreditCard,
   Shield,
@@ -23,7 +22,7 @@ import { useWorkspace } from '@/lib/providers/workspace-provider';
 const businessOwnerNavigation = [
   { name: 'Dashboard', href: '/dashboard/business-owner', icon: LayoutDashboard },
   { name: 'Bookings', href: '/dashboard/bookings', icon: BookOpen },
-  { name: 'Calendar', href: '/dashboard/calendar', icon: Calendar },
+  { name: 'Calendar', href: '/dashboard/calendar', icon: CalendarIcon },
   { name: 'Services', href: '/dashboard/business-owner/services', icon: Briefcase },
   { name: 'Staff', href: '/dashboard/business-owner/staff', icon: Users },
   { name: 'CRM', href: '/dashboard/crm', icon: UserCircle },
