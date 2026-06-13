@@ -44,7 +44,7 @@ const integrations = [
     name: 'Google Calendar',
     category: 'Calendar sync',
     description:
-      'Two-way sync between Inboker and Google Calendar. When a client books, it appears in your Google Calendar instantly. Block personal appointments in Google Calendar and they'll show as unavailable in Inboker.',
+      "Two-way sync between Inboker and Google Calendar. When a client books, it appears in your Google Calendar instantly. Block personal appointments in Google Calendar and they'll show as unavailable in Inboker.",
     features: [
       'Two-way real-time sync',
       'Supports multiple Google accounts per staff member',
@@ -87,7 +87,7 @@ const integrations = [
     name: 'Twilio',
     category: 'SMS',
     description:
-      'Inboker uses Twilio to deliver SMS reminders worldwide. Every text message, including confirmations, reminders, and follow-ups, routes through Twilio\'s carrier network for near-100% delivery rates.',
+      "Inboker uses Twilio to deliver SMS reminders worldwide. Every text message, including confirmations, reminders, and follow-ups, routes through Twilio's carrier network for near-100% delivery rates.",
     features: [
       'UK and international SMS delivery',
       'Dedicated sender number or shared pool',
