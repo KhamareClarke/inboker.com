@@ -298,10 +298,11 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex">
-      {/* Left panel — dark brand */}
-      <div className="hidden lg:flex lg:w-[44%] bg-[#070c18] flex-col justify-between p-12 relative overflow-hidden shrink-0">
+      {/* Left panel — blue brand */}
+      <div className="hidden lg:flex lg:w-[44%] bg-gradient-to-br from-blue-900 via-[#1a2d6b] to-indigo-900 flex-col justify-between p-12 relative overflow-hidden shrink-0">
         <div className="absolute inset-0 hero-grid opacity-40" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-blue-600/8 rounded-full blur-[100px] pointer-events-none" />
+        <div className="absolute top-1/3 -left-40 w-[500px] h-[500px] bg-cyan-400/20 rounded-full blur-[80px] pointer-events-none" />
+        <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-indigo-300/15 rounded-full blur-[70px] pointer-events-none" />
 
         {/* Logo */}
         <div className="relative z-10">
@@ -319,7 +320,7 @@ export default function LoginPage() {
             <h2 className="font-display text-[1.6rem] font-bold text-white leading-snug mb-3">
               Fill your calendar<br />automatically
             </h2>
-            <p className="text-white/45 text-[15px] leading-relaxed max-w-[280px]">
+            <p className="text-white/70 text-[15px] leading-relaxed max-w-[280px]">
               AI scheduling, automated reminders, and no-show reduction, all in one platform for UK appointment businesses.
             </p>
           </div>
@@ -331,10 +332,10 @@ export default function LoginPage() {
               'GDPR-compliant by default',
             ].map((f) => (
               <div key={f} className="flex items-center gap-2.5">
-                <div className="w-4 h-4 rounded-full bg-blue-600/20 flex items-center justify-center shrink-0">
-                  <Check className="h-2.5 w-2.5 text-blue-400" />
+                <div className="w-4 h-4 rounded-full bg-white/15 flex items-center justify-center shrink-0">
+                  <Check className="h-2.5 w-2.5 text-white" />
                 </div>
-                <span className="text-[13px] text-white/55">{f}</span>
+                <span className="text-[13px] text-white/75">{f}</span>
               </div>
             ))}
           </div>
@@ -342,10 +343,10 @@ export default function LoginPage() {
 
         {/* Bottom testimonial */}
         <div className="relative z-10 border-t border-white/[0.07] pt-6">
-          <p className="text-[13px] text-white/40 leading-relaxed italic mb-3">
+          <p className="text-[13px] text-white/60 leading-relaxed italic mb-3">
             &ldquo;Switching to Inboker cut our no-shows nearly in half. Clients rebook themselves and our front desk finally breathes.&rdquo;
           </p>
-          <p className="text-[12px] text-white/25">Aisha R., Clinic Manager · Prime Health Clinic</p>
+          <p className="text-[12px] text-white/45">Aisha R., Clinic Manager · Prime Health Clinic</p>
         </div>
       </div>
 
