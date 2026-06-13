@@ -32,7 +32,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'About Inboker',
-    description: 'Built in 2024 to fill appointment businesses' calendars on autopilot.',
+    description: "Built in 2024 to fill appointment businesses' calendars on autopilot.",
     images: [`${siteUrl}/og-image.png`],
   },
 };
@@ -63,21 +63,21 @@ const values = [
     icon: Shield,
     title: 'Trust is the product',
     description:
-      'When a client books with one of our customers, they're trusting that business with their time and data. We take that seriously: GDPR-compliant, encrypted at rest and in transit, always.',
+      "When a client books with one of our customers, they're trusting that business with their time and data. We take that seriously: GDPR-compliant, encrypted at rest and in transit, always.",
     color: 'bg-emerald-50 text-emerald-600',
   },
   {
     icon: TrendingUp,
     title: 'Outcomes, not features',
     description:
-      'We don't ship features for the sake of a changelog. Every decision starts with the same question: does this help our customers book more, earn more, or stress less?',
+      "We don't ship features for the sake of a changelog. Every decision starts with the same question: does this help our customers book more, earn more, or stress less?",
     color: 'bg-blue-50 text-blue-600',
   },
   {
     icon: Globe,
     title: 'Accessible to every business size',
     description:
-      'Whether you're a solo practitioner or a 50-location chain, you deserve professional booking infrastructure. We keep pricing transparent and accessible.',
+      "Whether you're a solo practitioner or a 50-location chain, you deserve professional booking infrastructure. We keep pricing transparent and accessible.",
     color: 'bg-violet-50 text-violet-600',
   },
   {

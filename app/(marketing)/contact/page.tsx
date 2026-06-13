@@ -30,7 +30,7 @@ const channels = [
     icon: MessageSquare,
     title: 'Live chat',
     description: 'Available in the app',
-    sub: 'Fastest way to reach us when you're logged in',
+    sub: "Fastest way to reach us when you're logged in",
     color: 'bg-violet-50 text-violet-600',
   },
   {

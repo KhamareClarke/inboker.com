@@ -150,7 +150,7 @@ export default function FeaturesPage() {
     { question: 'How long does it take to set up Inboker?', answer: 'Most businesses are live and taking bookings within 5 minutes. The setup wizard walks you through adding your services, staff, and booking link. More advanced features like intake forms and custom domains take a little longer to configure.' },
     { question: 'Does Inboker work for multi-location businesses?', answer: 'Yes. The Business plan supports unlimited locations under one account with a unified dashboard, cross-location reporting, and centralised client management.' },
     { question: 'Can I try all features before paying?', answer: 'Yes. The 14-day free trial gives you full access to all Pro features. No credit card required. You can explore every feature before deciding which plan fits your business.' },
-    { question: 'How does AI scheduling work in Inboker?', answer: 'Inboker\'s AI analyses your booking patterns, staff availability, and historical data to identify and fill gaps in your calendar. It clusters bookings to minimise dead time, detects your busiest periods, and surfaces re-engagement opportunities for lapsed clients, all automatically.' },
+    { question: 'How does AI scheduling work in Inboker?', answer: "Inboker's AI analyses your booking patterns, staff availability, and historical data to identify and fill gaps in your calendar. It clusters bookings to minimise dead time, detects your busiest periods, and surfaces re-engagement opportunities for lapsed clients, all automatically." },
   ];
 
   return (
@@ -367,7 +367,7 @@ export default function FeaturesPage() {
                   items: [
                     'Detects and fills gaps between appointments automatically',
                     'Clusters bookings to minimise dead time',
-                    'Adapts to each staff member's peak booking times',
+                    "Adapts to each staff member's peak booking times",
                     'Avoids back-to-back overload with built-in buffer rules',
                   ],
                 },
@@ -549,7 +549,7 @@ export default function FeaturesPage() {
                 <div>
                   <h3 className="font-bold text-gray-900 mb-3">Retention tools</h3>
                   <FeatureList items={[
-                    'Auto-flag clients who haven't booked in X days',
+                    "Auto-flag clients who haven't booked in X days",
                     'Automated re-engagement emails to lapsed clients',
                     'Post-visit review requests sent at the right time',
                     'Birthday messages with optional discount codes',

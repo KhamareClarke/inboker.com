@@ -212,7 +212,7 @@ export default function SignupPage() {
           <p className="text-sm text-gray-500 text-center mb-6">
             {canceled
               ? 'Your payment was canceled. Complete your subscription to access your dashboard.'
-              : 'You're already signed in to Inboker.'}
+              : "You're already signed in to Inboker."}
           </p>
 
           {canceled && (
