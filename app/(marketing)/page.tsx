@@ -117,10 +117,10 @@ export default function HomePage() {
                 <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
-                href="/demo"
+                href="/contact"
                 className="flex items-center gap-2 border border-white/[0.18] text-white hover:border-white/30 bg-white/[0.07] hover:bg-white/[0.12] text-[15px] font-semibold h-12 px-7 rounded-xl transition-all w-full sm:w-auto justify-center"
               >
-                Watch a demo
+                Contact sales
               </Link>
             </div>
 
@@ -972,8 +972,8 @@ export default function HomePage() {
                   Start free trial
                   <ArrowRight className="h-4 w-4" />
                 </Link>
-                <Link href="/demo" className="flex items-center gap-2 border border-white/[0.1] text-white/60 hover:text-white hover:border-white/20 bg-white/[0.03] hover:bg-white/[0.06] text-[15px] font-semibold h-12 px-7 rounded-xl transition-all w-full sm:w-auto justify-center">
-                  Book a demo
+                <Link href="/contact" className="flex items-center gap-2 border border-white/[0.1] text-white/60 hover:text-white hover:border-white/20 bg-white/[0.03] hover:bg-white/[0.06] text-[15px] font-semibold h-12 px-7 rounded-xl transition-all w-full sm:w-auto justify-center">
+                  Contact sales
                 </Link>
               </div>
               <div className="flex items-center justify-center gap-5 mt-7 text-[13px] text-white/60">
