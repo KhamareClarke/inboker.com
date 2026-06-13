@@ -266,10 +266,11 @@ export default function SignupPage() {
 
   return (
     <div className="flex min-h-screen">
-      {/* Left panel — dark brand */}
-      <div className="hidden lg:flex lg:w-[44%] bg-[#070c18] flex-col justify-between p-12 relative overflow-hidden shrink-0">
+      {/* Left panel — blue brand */}
+      <div className="hidden lg:flex lg:w-[44%] bg-gradient-to-br from-blue-900 via-[#1a2d6b] to-indigo-900 flex-col justify-between p-12 relative overflow-hidden shrink-0">
         <div className="absolute inset-0 hero-grid opacity-40" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(59,130,246,0.15),transparent)]" />
+        <div className="absolute top-1/3 -left-40 w-[500px] h-[500px] bg-cyan-400/20 rounded-full blur-[80px] pointer-events-none" />
+        <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-indigo-300/15 rounded-full blur-[70px] pointer-events-none" />
 
         {/* Logo */}
         <div className="relative z-10">
@@ -283,7 +284,7 @@ export default function SignupPage() {
 
         {/* Headline + bullets */}
         <div className="relative z-10 -mt-8">
-          <div className="inline-block rounded-full border border-blue-400/20 bg-blue-600/[0.12] px-4 py-1.5 text-[11px] font-semibold text-blue-400 uppercase tracking-widest mb-6">
+          <div className="inline-block rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-[11px] font-semibold text-blue-300 uppercase tracking-widest mb-6">
             14-day free trial
           </div>
           <h2 className="font-display text-[2rem] font-extrabold text-white leading-tight mb-6">
@@ -297,10 +298,10 @@ export default function SignupPage() {
               { icon: Check, text: 'No contracts, cancel anytime' },
             ].map(({ icon: Icon, text }) => (
               <li key={text} className="flex items-center gap-3">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-600/20 border border-blue-400/20">
-                  <Icon className="h-3 w-3 text-blue-400" />
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/15 border border-white/20">
+                  <Icon className="h-3 w-3 text-white" />
                 </span>
-                <span className="text-sm text-white/60">{text}</span>
+                <span className="text-sm text-white/75">{text}</span>
               </li>
             ))}
           </ul>
@@ -311,12 +312,12 @@ export default function SignupPage() {
           <div className="flex gap-0.5 mb-3">
             {[1,2,3,4,5].map((s) => <Star key={s} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />)}
           </div>
-          <p className="text-sm text-white/55 leading-relaxed mb-3">
+          <p className="text-sm text-white/70 leading-relaxed mb-3">
             "Set up in under 10 minutes. I went from taking bookings over WhatsApp to having a proper system."
           </p>
           <div>
             <p className="text-sm font-semibold text-white">Priya Nair</p>
-            <p className="text-xs text-white/35">Owner, The Brow Studio</p>
+            <p className="text-xs text-white/50">Owner, The Brow Studio</p>
           </div>
         </div>
       </div>
