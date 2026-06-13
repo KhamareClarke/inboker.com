@@ -61,8 +61,13 @@ export default function ComparisonPage({ params }: { params: { competitor: strin
 
       <div className="flex flex-col">
         {/* HERO */}
-        <section className="bg-[#070c18] pt-16 pb-16 sm:pt-24 sm:pb-24">
-          <div className="mx-auto max-w-[1200px] px-5 sm:px-8">
+        <section className="relative bg-gradient-to-br from-blue-900 via-[#1a2d6b] to-indigo-900 overflow-hidden -mt-[68px]">
+          <div className="absolute inset-0 hero-grid" />
+          <div className="absolute inset-x-0 top-0 h-[600px] bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(37,99,235,0.22),transparent)]" />
+          <div className="absolute top-1/3 -left-40 w-[600px] h-[600px] bg-cyan-400/25 rounded-full blur-[80px]" />
+          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-300/20 rounded-full blur-[70px]" />
+          <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-white/[0.07] to-transparent" />
+          <div className="relative z-10 mx-auto max-w-[1200px] px-5 sm:px-8 pt-[148px] sm:pt-[180px] pb-16 sm:pb-20">
             <nav className="flex items-center gap-2 text-[13px] text-white/30 mb-8" aria-label="Breadcrumb">
               <Link href="/" className="hover:text-white/60 transition-colors">Home</Link>
               <span>/</span>
@@ -70,10 +75,11 @@ export default function ComparisonPage({ params }: { params: { competitor: strin
             </nav>
 
             <div className="max-w-3xl mx-auto text-center">
-              <h1 className="font-display text-[clamp(2rem,5vw,3.5rem)] font-extrabold leading-[1.1] tracking-tight text-white mb-6">
+              <p className="text-[13px] font-semibold text-blue-400 uppercase tracking-widest mb-4">Comparison</p>
+              <h1 className="font-display text-[clamp(2.25rem,5vw,3.75rem)] font-extrabold leading-tight tracking-tight text-white mb-5">
                 {data.headline}
               </h1>
-              <p className="text-lg sm:text-xl text-white/55 max-w-2xl mx-auto mb-10 leading-relaxed">
+              <p className="text-lg text-white/70 max-w-2xl mx-auto mb-8 leading-relaxed">
                 {data.subheadline}
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -83,6 +89,12 @@ export default function ComparisonPage({ params }: { params: { competitor: strin
                 >
                   Try Inboker free
                   <ArrowRight className="h-4 w-4" />
+                </Link>
+                <Link
+                  href="/contact"
+                  className="inline-flex items-center gap-2 border border-white/20 text-white/80 hover:border-white/40 hover:text-white text-[15px] font-semibold h-12 px-7 rounded-xl transition-colors"
+                >
+                  Contact sales
                 </Link>
               </div>
             </div>
@@ -185,7 +197,7 @@ export default function ComparisonPage({ params }: { params: { competitor: strin
         {/* CTA */}
         <section className="py-16 sm:py-24">
           <div className="mx-auto max-w-[1200px] px-5 sm:px-8">
-            <div className="bg-[#070c18] rounded-3xl px-8 py-16 sm:px-16 sm:py-20 text-center border border-white/[0.06]">
+            <div className="bg-gradient-to-br from-blue-900 via-[#1a2d6b] to-indigo-900 rounded-3xl px-8 py-16 sm:px-16 sm:py-20 text-center border border-white/[0.06]">
               <p className="text-[13px] font-semibold text-blue-400 uppercase tracking-widest mb-4">14-day free trial</p>
               <h2 className="font-display text-[clamp(1.75rem,3.5vw,2.75rem)] font-extrabold tracking-tight text-white mb-4">
                 Try Inboker free for 14 days

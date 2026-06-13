@@ -70,6 +70,32 @@ export default function AuthorPage({ params }: { params: { slug: string } }) {
       <BreadcrumbSchema items={breadcrumbItems} />
 
       <div className="min-h-screen bg-white">
+        {/* Hero */}
+        <section className="relative bg-gradient-to-br from-blue-900 via-[#1a2d6b] to-indigo-900 overflow-hidden -mt-[68px]">
+          <div className="absolute inset-0 hero-grid" />
+          <div className="absolute inset-x-0 top-0 h-[600px] bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(37,99,235,0.22),transparent)]" />
+          <div className="absolute top-1/3 -left-40 w-[600px] h-[600px] bg-cyan-400/25 rounded-full blur-[80px]" />
+          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-300/20 rounded-full blur-[70px]" />
+          <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-white/[0.07] to-transparent" />
+          <div className="relative z-10 mx-auto max-w-[1200px] px-5 sm:px-8 pt-[148px] sm:pt-[180px] pb-16 sm:pb-20">
+            <p className="text-[13px] font-semibold text-blue-400 uppercase tracking-widest mb-4">Author</p>
+            <h1 className="font-display text-[clamp(2.25rem,5vw,3.75rem)] font-extrabold tracking-tight text-white leading-tight mb-5 max-w-3xl">
+              {author.name}
+            </h1>
+            <p className="text-lg text-white/70 leading-relaxed mb-8 max-w-2xl">
+              {author.bio}
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Link href="/blog" className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-500 transition-colors shadow-lg shadow-blue-600/25">
+                Read the blog <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link href="/signup" className="inline-flex items-center gap-2 rounded-xl border border-white/20 px-6 py-3 text-sm font-semibold text-white/80 hover:border-white/40 hover:text-white transition-colors">
+                Start free trial
+              </Link>
+            </div>
+          </div>
+        </section>
+
         <div className="mx-auto max-w-[860px] px-5 sm:px-8 py-14 sm:py-20">
 
           {/* Breadcrumb */}

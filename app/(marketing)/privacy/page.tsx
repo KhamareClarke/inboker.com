@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://inboker.com';
 
@@ -10,12 +11,29 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <div className="mx-auto max-w-3xl px-5 sm:px-8 py-20">
-      <div className="mb-12">
-        <p className="text-[13px] font-semibold text-blue-600 uppercase tracking-widest mb-3">Legal</p>
-        <h1 className="font-display text-4xl font-extrabold tracking-tight text-gray-900 mb-4">Privacy Policy</h1>
-        <p className="text-gray-500">Last updated: January 2025</p>
-      </div>
+    <div className="min-h-screen bg-white">
+      {/* Hero */}
+      <section className="relative bg-gradient-to-br from-blue-900 via-[#1a2d6b] to-indigo-900 overflow-hidden -mt-[68px]">
+        <div className="absolute inset-0 hero-grid" />
+        <div className="absolute inset-x-0 top-0 h-[600px] bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(37,99,235,0.22),transparent)]" />
+        <div className="absolute top-1/3 -left-40 w-[600px] h-[600px] bg-cyan-400/25 rounded-full blur-[80px]" />
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-300/20 rounded-full blur-[70px]" />
+        <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-white/[0.07] to-transparent" />
+        <div className="relative z-10 mx-auto max-w-[1200px] px-5 sm:px-8 pt-[148px] sm:pt-[180px] pb-16 sm:pb-20">
+          <p className="text-[13px] font-semibold text-blue-400 uppercase tracking-widest mb-4">Legal</p>
+          <h1 className="font-display text-[clamp(2.25rem,5vw,3.75rem)] font-extrabold tracking-tight text-white leading-tight mb-5 max-w-3xl">
+            Privacy Policy
+          </h1>
+          <p className="text-lg text-white/70 leading-relaxed mb-8 max-w-2xl">
+            How Inboker collects, uses, and protects your personal data. GDPR compliant. Last updated: January 2025.
+          </p>
+        </div>
+      </section>
+
+      <div className="mx-auto max-w-3xl px-5 sm:px-8 py-16">
+        <div className="mb-8">
+          <p className="text-gray-500 text-sm">Last updated: January 2025</p>
+        </div>
 
       <div className="prose prose-gray max-w-none space-y-8">
         <section>
@@ -77,9 +95,10 @@ export default function PrivacyPage() {
         <section>
           <h2 className="font-display text-xl font-bold text-gray-900 mb-3">7. Contact us</h2>
           <p className="text-gray-600 leading-relaxed">
-            For any privacy-related queries, contact us at <a href="mailto:privacy@inboker.com" className="text-blue-600 hover:underline">privacy@inboker.com</a> or through our <a href="/contact" className="text-blue-600 hover:underline">contact page</a>.
+            For any privacy-related queries, contact us at <a href="mailto:privacy@inboker.com" className="text-blue-600 hover:underline">privacy@inboker.com</a> or through our <Link href="/contact" className="text-blue-600 hover:underline">contact page</Link>.
           </p>
         </section>
+      </div>
       </div>
     </div>
   );

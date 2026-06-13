@@ -55,8 +55,13 @@ export default function IndustryPage({ params }: { params: { industry: string } 
 
       <div className="flex flex-col">
         {/* HERO */}
-        <section className="bg-[#070c18] pt-16 pb-20 sm:pt-24 sm:pb-32">
-          <div className="mx-auto max-w-[1200px] px-5 sm:px-8">
+        <section className="relative bg-gradient-to-br from-blue-900 via-[#1a2d6b] to-indigo-900 overflow-hidden -mt-[68px]">
+          <div className="absolute inset-0 hero-grid" />
+          <div className="absolute inset-x-0 top-0 h-[600px] bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(37,99,235,0.22),transparent)]" />
+          <div className="absolute top-1/3 -left-40 w-[600px] h-[600px] bg-cyan-400/25 rounded-full blur-[80px]" />
+          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-300/20 rounded-full blur-[70px]" />
+          <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-white/[0.07] to-transparent" />
+          <div className="relative z-10 mx-auto max-w-[1200px] px-5 sm:px-8 pt-[148px] sm:pt-[180px] pb-16 sm:pb-20">
             {/* Breadcrumb */}
             <nav className="flex items-center gap-2 text-[13px] text-white/30 mb-8" aria-label="Breadcrumb">
               <Link href="/" className="hover:text-white/60 transition-colors">Home</Link>
@@ -70,11 +75,11 @@ export default function IndustryPage({ params }: { params: { industry: string } 
                 Built specifically for {data.name.toLowerCase()}
               </div>
 
-              <h1 className="font-display text-[clamp(2rem,5vw,3.75rem)] font-extrabold leading-[1.08] tracking-tight text-white mb-6">
+              <h1 className="font-display text-[clamp(2.25rem,5vw,3.75rem)] font-extrabold leading-tight tracking-tight text-white mb-5">
                 {data.headline}
               </h1>
 
-              <p className="text-lg sm:text-xl text-white/55 max-w-2xl mx-auto mb-10 leading-relaxed">
+              <p className="text-lg text-white/70 max-w-2xl mx-auto mb-8 leading-relaxed">
                 {data.subheadline}
               </p>
 
@@ -88,7 +93,7 @@ export default function IndustryPage({ params }: { params: { industry: string } 
                 </Link>
                 <Link
                   href="/contact"
-                  className="inline-flex items-center gap-2 border border-white/[0.12] text-white/70 hover:border-white/25 hover:text-white text-[15px] font-semibold h-12 px-7 rounded-xl transition-colors"
+                  className="inline-flex items-center gap-2 border border-white/20 text-white/80 hover:border-white/40 hover:text-white text-[15px] font-semibold h-12 px-7 rounded-xl transition-colors"
                 >
                   Book a demo
                 </Link>
@@ -183,7 +188,7 @@ export default function IndustryPage({ params }: { params: { industry: string } 
         {/* TESTIMONIAL */}
         <section className="py-16 sm:py-24 bg-white">
           <div className="mx-auto max-w-[1200px] px-5 sm:px-8">
-            <div className="max-w-2xl mx-auto bg-[#070c18] border border-white/[0.06] rounded-3xl p-10 sm:p-14 text-center">
+            <div className="max-w-2xl mx-auto bg-gradient-to-br from-blue-900 via-[#1a2d6b] to-indigo-900 border border-white/[0.06] rounded-3xl p-10 sm:p-14 text-center">
               <div className="flex gap-1 justify-center mb-6">
                 {[...Array(5)].map((_, i) => (
                   <Star key={i} className="h-5 w-5 fill-amber-400 text-amber-400" />
@@ -240,7 +245,7 @@ export default function IndustryPage({ params }: { params: { industry: string } 
         {/* FINAL CTA */}
         <section className="py-16 sm:py-24">
           <div className="mx-auto max-w-[1200px] px-5 sm:px-8">
-            <div className="bg-[#070c18] border border-white/[0.06] rounded-3xl px-8 py-16 sm:px-16 sm:py-20 text-center">
+            <div className="bg-gradient-to-br from-blue-900 via-[#1a2d6b] to-indigo-900 border border-white/[0.06] rounded-3xl px-8 py-16 sm:px-16 sm:py-20 text-center">
               <p className="text-[13px] font-semibold text-blue-400 uppercase tracking-widest mb-4">14-day free trial</p>
               <h2 className="font-display text-[clamp(1.75rem,3.5vw,2.75rem)] font-extrabold tracking-tight text-white mb-4">
                 Ready to fill your {data.name.toLowerCase()} calendar?

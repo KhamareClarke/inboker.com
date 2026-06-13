@@ -61,19 +61,24 @@ export default function ContactPage() {
 
       <div className="min-h-screen bg-white">
         {/* Hero */}
-        <div className="bg-[#070c18]">
-          <div className="mx-auto max-w-[1200px] px-5 sm:px-8 py-16 sm:py-20 text-center">
-            <p className="text-[13px] font-semibold text-blue-400 uppercase tracking-widest mb-3">
+        <section className="relative bg-gradient-to-br from-blue-900 via-[#1a2d6b] to-indigo-900 overflow-hidden -mt-[68px]">
+          <div className="absolute inset-0 hero-grid" />
+          <div className="absolute inset-x-0 top-0 h-[600px] bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(37,99,235,0.22),transparent)]" />
+          <div className="absolute top-1/3 -left-40 w-[600px] h-[600px] bg-cyan-400/25 rounded-full blur-[80px]" />
+          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-300/20 rounded-full blur-[70px]" />
+          <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-white/[0.07] to-transparent" />
+          <div className="relative z-10 mx-auto max-w-[1200px] px-5 sm:px-8 pt-[148px] sm:pt-[180px] pb-16 sm:pb-20 text-center">
+            <p className="text-[13px] font-semibold text-blue-400 uppercase tracking-widest mb-4">
               Contact us
             </p>
-            <h1 className="font-display text-[clamp(2rem,4vw,2.75rem)] font-extrabold tracking-tight text-white mb-4">
+            <h1 className="font-display text-[clamp(2.25rem,5vw,3.75rem)] font-extrabold tracking-tight text-white leading-tight mb-5">
               Let's talk
             </h1>
-            <p className="text-lg text-white/50 max-w-xl mx-auto leading-relaxed">
+            <p className="text-lg text-white/70 max-w-xl mx-auto leading-relaxed">
               Questions about pricing, features, or getting started? Drop us a message and we'll get back to you within one business day.
             </p>
           </div>
-        </div>
+        </section>
 
         <div className="mx-auto max-w-[1200px] px-5 sm:px-8 py-14 sm:py-20">
           <div className="grid lg:grid-cols-[1fr_420px] gap-12 xl:gap-20">
@@ -111,7 +116,7 @@ export default function ContactPage() {
               </div>
 
               {/* FAQ teaser */}
-              <div className="rounded-2xl bg-[#070c18] border border-white/[0.06] p-7 text-white">
+              <div className="rounded-2xl bg-gradient-to-br from-blue-900 via-[#1a2d6b] to-indigo-900 border border-white/[0.06] p-7 text-white">
                 <h3 className="font-display font-bold text-base mb-1 text-white">Already have an account?</h3>
                 <p className="text-white/45 text-sm leading-relaxed mb-4">
                   Use the in-app chat for the fastest support. Our team can access your account details and resolve issues in real time.

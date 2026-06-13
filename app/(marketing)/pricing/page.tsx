@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Star, Shield, Zap, Users } from 'lucide-react';
+import { Star, Shield, Zap, Users, ArrowRight } from 'lucide-react';
 import { FAQSchema, BreadcrumbSchema } from '@/components/seo/json-ld';
 import { PricingPlans } from './pricing-plans';
 
@@ -45,7 +45,7 @@ const faqs = [
   {
     question: 'Do you offer annual billing?',
     answer:
-      'Yes. Annual billing saves you 20% compared to monthly. You're billed once per year. Starter drops from £29 to £23/mo, Pro from £69 to £55/mo, and Business from £149 to £119/mo.',
+      "Yes. Annual billing saves you 20% compared to monthly. You're billed once per year. Starter drops from £29 to £23/mo, Pro from £69 to £55/mo, and Business from £149 to £119/mo.",
   },
   {
     question: 'Can I use Inboker across multiple locations?',
@@ -90,17 +90,30 @@ export default function PricingPage() {
       <div className="min-h-screen bg-white">
 
         {/* Hero */}
-        <div className="bg-[#070c18]">
-          <div className="mx-auto max-w-[1200px] px-5 sm:px-8 py-16 sm:py-20 text-center">
-            <p className="text-[13px] font-semibold text-blue-400 uppercase tracking-widest mb-3">Pricing</p>
-            <h1 className="font-display text-[clamp(2rem,5vw,3rem)] font-extrabold tracking-tight text-white mb-4">
+        <section className="relative bg-gradient-to-br from-blue-900 via-[#1a2d6b] to-indigo-900 overflow-hidden -mt-[68px]">
+          <div className="absolute inset-0 hero-grid" />
+          <div className="absolute inset-x-0 top-0 h-[600px] bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(37,99,235,0.22),transparent)]" />
+          <div className="absolute top-1/3 -left-40 w-[600px] h-[600px] bg-cyan-400/25 rounded-full blur-[80px]" />
+          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-300/20 rounded-full blur-[70px]" />
+          <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-white/[0.07] to-transparent" />
+          <div className="relative z-10 mx-auto max-w-[1200px] px-5 sm:px-8 pt-[148px] sm:pt-[180px] pb-16 sm:pb-20 text-center">
+            <p className="text-[13px] font-semibold text-blue-400 uppercase tracking-widest mb-4">Pricing</p>
+            <h1 className="font-display text-[clamp(2.25rem,5vw,3.75rem)] font-extrabold tracking-tight text-white leading-tight mb-5">
               Simple, transparent pricing
             </h1>
-            <p className="text-lg text-white/50 max-w-xl mx-auto leading-relaxed">
+            <p className="text-lg text-white/70 max-w-xl mx-auto leading-relaxed mb-8">
               No hidden fees. No long-term contracts. Start free, upgrade when you're ready.
             </p>
+            <div className="flex flex-wrap justify-center gap-3">
+              <Link href="/signup" className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-500 transition-colors shadow-lg shadow-blue-600/25">
+                Start free trial <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link href="/contact" className="inline-flex items-center gap-2 rounded-xl border border-white/20 px-6 py-3 text-sm font-semibold text-white/80 hover:border-white/40 hover:text-white transition-colors">
+                Contact sales
+              </Link>
+            </div>
           </div>
-        </div>
+        </section>
 
         {/* Trust bar */}
         <div className="border-b border-gray-100 bg-white">
@@ -184,7 +197,7 @@ export default function PricingPage() {
         </div>
 
         {/* Bottom CTA */}
-        <div className="bg-[#070c18]">
+        <div className="bg-gradient-to-br from-blue-900 via-[#1a2d6b] to-indigo-900">
           <div className="mx-auto max-w-[1200px] px-5 sm:px-8 py-16 sm:py-20 text-center">
             <p className="text-[13px] font-semibold text-blue-400 uppercase tracking-widest mb-4">Get started</p>
             <h2 className="font-display text-[clamp(1.75rem,4vw,2.5rem)] font-extrabold text-white mb-4">
@@ -194,12 +207,12 @@ export default function PricingPage() {
               No credit card. No contracts. Just online bookings, automated reminders, and a calmer working day.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-4">
-              <a
-                href="https://app.inboker.com/signup"
+              <Link
+                href="/signup"
                 className="rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold px-8 py-3.5 text-sm transition-colors shadow-lg shadow-blue-600/20"
               >
                 Get started free
-              </a>
+              </Link>
               <Link
                 href="/contact"
                 className="rounded-xl border border-white/[0.12] text-white/70 font-semibold px-8 py-3.5 text-sm hover:border-white/25 hover:text-white transition-colors"

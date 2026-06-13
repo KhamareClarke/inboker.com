@@ -160,26 +160,39 @@ export default function AboutPage() {
       <div className="min-h-screen bg-white">
 
         {/* Hero */}
-        <div className="bg-[#070c18]">
-          <div className="mx-auto max-w-[1200px] px-5 sm:px-8 py-20 sm:py-28">
+        <section className="relative bg-gradient-to-br from-blue-900 via-[#1a2d6b] to-indigo-900 overflow-hidden -mt-[68px]">
+          <div className="absolute inset-0 hero-grid" />
+          <div className="absolute inset-x-0 top-0 h-[600px] bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(37,99,235,0.22),transparent)]" />
+          <div className="absolute top-1/3 -left-40 w-[600px] h-[600px] bg-cyan-400/25 rounded-full blur-[80px]" />
+          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-300/20 rounded-full blur-[70px]" />
+          <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-white/[0.07] to-transparent" />
+          <div className="relative z-10 mx-auto max-w-[1200px] px-5 sm:px-8 pt-[148px] sm:pt-[180px] pb-16 sm:pb-20">
             <div className="max-w-3xl">
               <p className="text-[13px] font-semibold text-blue-400 uppercase tracking-widest mb-4">
                 About Inboker
               </p>
-              <h1 className="font-display text-[clamp(2.25rem,5vw,3.5rem)] font-extrabold tracking-tight text-white leading-tight mb-6">
+              <h1 className="font-display text-[clamp(2.25rem,5vw,3.75rem)] font-extrabold tracking-tight text-white leading-tight mb-5">
                 We built the booking engine we wished existed
               </h1>
-              <p className="text-xl text-white/55 leading-relaxed mb-6 max-w-2xl">
+              <p className="text-lg text-white/70 leading-relaxed mb-4 max-w-2xl">
                 Appointment-based businesses are run by skilled, talented people: physiotherapists, stylists, trainers, consultants. They shouldn't be spending their evenings manually chasing confirmations and filling in spreadsheets.
               </p>
-              <p className="text-xl text-white/55 leading-relaxed max-w-2xl">
+              <p className="text-lg text-white/70 leading-relaxed mb-8 max-w-2xl">
                 Inboker was built in 2024 to put that admin on autopilot, so the people who serve people can get back to doing the work that actually matters.
               </p>
+              <div className="flex flex-wrap gap-3">
+                <Link href="/signup" className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-500 transition-colors shadow-lg shadow-blue-600/25">
+                  Start free trial <ArrowRight className="h-4 w-4" />
+                </Link>
+                <Link href="/contact" className="inline-flex items-center gap-2 rounded-xl border border-white/20 px-6 py-3 text-sm font-semibold text-white/80 hover:border-white/40 hover:text-white transition-colors">
+                  Contact us
+                </Link>
+              </div>
             </div>
           </div>
 
           {/* Stats: inside dark hero */}
-          <div className="border-t border-white/[0.06]">
+          <div className="relative z-10 border-t border-white/[0.06]">
             <div className="mx-auto max-w-[1200px] px-5 sm:px-8 py-10">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-8">
                 {stats.map((s) => (
@@ -193,7 +206,7 @@ export default function AboutPage() {
               </div>
             </div>
           </div>
-        </div>
+        </section>
 
         {/* Mission */}
         <div className="mx-auto max-w-[1200px] px-5 sm:px-8 py-20">
@@ -217,7 +230,7 @@ export default function AboutPage() {
             </div>
 
             {/* Pull quote */}
-            <div className="bg-[#070c18] rounded-3xl p-10 text-white border border-white/[0.06]">
+            <div className="bg-gradient-to-br from-blue-900 via-[#1a2d6b] to-indigo-900 rounded-3xl p-10 text-white border border-white/[0.06]">
               <div className="font-display text-5xl leading-none text-blue-400 mb-4">&ldquo;</div>
               <p className="font-display text-xl font-semibold leading-relaxed mb-8 text-white/90">
                 Every hour a skilled professional spends on scheduling is an hour they can't spend on the thing they trained for. We're here to reclaim those hours.
@@ -333,7 +346,7 @@ export default function AboutPage() {
                 Contact us <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
-            <div className="rounded-2xl bg-[#070c18] border border-white/[0.06] p-8 text-white">
+            <div className="rounded-2xl bg-gradient-to-br from-blue-900 via-[#1a2d6b] to-indigo-900 border border-white/[0.06] p-8 text-white">
               <div className="h-10 w-10 rounded-xl bg-blue-600/20 flex items-center justify-center mb-4">
                 <Calendar className="h-5 w-5 text-blue-400" />
               </div>
@@ -341,12 +354,12 @@ export default function AboutPage() {
               <p className="text-white/45 text-sm leading-relaxed mb-5">
                 No credit card. No contracts. Go live in under 5 minutes.
               </p>
-              <a
-                href="https://app.inboker.com/signup"
+              <Link
+                href="/signup"
                 className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold px-5 py-2.5 text-sm transition-colors"
               >
                 Start free trial <ArrowRight className="h-4 w-4" />
-              </a>
+              </Link>
             </div>
           </div>
         </div>

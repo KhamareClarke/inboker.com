@@ -76,82 +76,99 @@ const posts = [
 
 export default function BlogPage() {
   return (
-    <div className="mx-auto max-w-[1200px] px-5 sm:px-8 py-16 sm:py-24">
-      <div className="max-w-2xl mb-16">
-        <p className="text-[13px] font-semibold text-blue-600 uppercase tracking-widest mb-3">Blog</p>
-        <h1 className="font-display text-[clamp(2rem,4vw,3rem)] font-extrabold tracking-tight text-gray-900 mb-4">
-          Scheduling tips, guides &amp; business growth
-        </h1>
-        <p className="text-lg text-gray-500 max-w-xl leading-relaxed">
-          Practical advice for appointment-based businesses. Reduce no-shows, grow your client base, and get the most from your booking system.
-        </p>
-      </div>
-
-    <div>
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {posts.map((post) => (
-          <article
-            key={post.slug}
-            className="bg-white rounded-2xl border border-gray-100 hover:border-blue-200 hover:shadow-[0_8px_30px_-8px_rgba(59,130,246,0.12)] transition-all duration-300 hover:-translate-y-1 flex flex-col"
-          >
-            <div className="p-7 flex flex-col flex-1">
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 px-3 py-1 rounded-full">
-                  {post.category}
-                </span>
-              </div>
-
-              <h2 className="text-[16px] font-bold text-gray-900 mb-3 leading-snug flex-1">
-                {post.title}
-              </h2>
-
-              <p className="text-[14px] text-gray-500 leading-relaxed mb-6">
-                {post.description}
-              </p>
-
-              <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-100">
-                <div className="flex items-center gap-2 text-[12px] text-gray-400">
-                  <Calendar className="h-3.5 w-3.5" />
-                  <span>{post.date}</span>
-                  <span>·</span>
-                  <span>{post.readTime}</span>
-                </div>
-                <Link
-                  href={`/blog/${post.slug}`}
-                  className="flex items-center gap-1.5 text-[13px] font-semibold text-blue-600 hover:text-blue-700 transition-colors"
-                >
-                  Read
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
-              </div>
-            </div>
-          </article>
-        ))}
-      </div>
-
-      {/* Industry guides CTA */}
-      <div className="mt-20 bg-gradient-to-b from-slate-50 to-white rounded-3xl border border-gray-100 p-10 sm:p-14">
-        <h2 className="font-display text-2xl font-extrabold text-gray-900 mb-4">Industry-specific guides</h2>
-        <p className="text-gray-500 mb-6">Booking guides built for your specific business type.</p>
-        <div className="flex flex-wrap gap-3">
-          {[
-            { label: 'Hair Salons', href: '/for/salons' },
-            { label: 'Clinics', href: '/for/clinics' },
-            { label: 'Barbershops', href: '/for/barbershops' },
-            { label: 'Personal Trainers', href: '/for/personal-trainers' },
-            { label: 'Yoga Studios', href: '/for/yoga-studios' },
-            { label: 'Aesthetics', href: '/for/aesthetics' },
-            { label: 'Physiotherapy', href: '/for/physiotherapy' },
-            { label: 'Consultants', href: '/for/consultants' },
-          ].map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="px-4 py-2 rounded-xl border border-gray-200 text-[14px] font-medium text-gray-600 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 transition-all"
-            >
-              {link.label}
+    <div className="min-h-screen bg-white">
+      {/* Hero */}
+      <section className="relative bg-gradient-to-br from-blue-900 via-[#1a2d6b] to-indigo-900 overflow-hidden -mt-[68px]">
+        <div className="absolute inset-0 hero-grid" />
+        <div className="absolute inset-x-0 top-0 h-[600px] bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(37,99,235,0.22),transparent)]" />
+        <div className="absolute top-1/3 -left-40 w-[600px] h-[600px] bg-cyan-400/25 rounded-full blur-[80px]" />
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-300/20 rounded-full blur-[70px]" />
+        <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-white/[0.07] to-transparent" />
+        <div className="relative z-10 mx-auto max-w-[1200px] px-5 sm:px-8 pt-[148px] sm:pt-[180px] pb-16 sm:pb-20">
+          <p className="text-[13px] font-semibold text-blue-400 uppercase tracking-widest mb-4">Blog</p>
+          <h1 className="font-display text-[clamp(2.25rem,5vw,3.75rem)] font-extrabold tracking-tight text-white leading-tight mb-5 max-w-3xl">
+            Scheduling tips, guides &amp; business growth
+          </h1>
+          <p className="text-lg text-white/70 leading-relaxed mb-8 max-w-2xl">
+            Practical advice for appointment-based businesses. Reduce no-shows, grow your client base, and get the most from your booking system.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <Link href="/signup" className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-500 transition-colors shadow-lg shadow-blue-600/25">
+              Start free trial <ArrowRight className="h-4 w-4" />
             </Link>
+            <Link href="/contact" className="inline-flex items-center gap-2 rounded-xl border border-white/20 px-6 py-3 text-sm font-semibold text-white/80 hover:border-white/40 hover:text-white transition-colors">
+              Contact sales
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <div className="mx-auto max-w-[1200px] px-5 sm:px-8 py-16 sm:py-24">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {posts.map((post) => (
+            <article
+              key={post.slug}
+              className="bg-white rounded-2xl border border-gray-100 hover:border-blue-200 hover:shadow-[0_8px_30px_-8px_rgba(59,130,246,0.12)] transition-all duration-300 hover:-translate-y-1 flex flex-col"
+            >
+              <div className="p-7 flex flex-col flex-1">
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 px-3 py-1 rounded-full">
+                    {post.category}
+                  </span>
+                </div>
+
+                <h2 className="text-[16px] font-bold text-gray-900 mb-3 leading-snug flex-1">
+                  {post.title}
+                </h2>
+
+                <p className="text-[14px] text-gray-500 leading-relaxed mb-6">
+                  {post.description}
+                </p>
+
+                <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-100">
+                  <div className="flex items-center gap-2 text-[12px] text-gray-400">
+                    <Calendar className="h-3.5 w-3.5" />
+                    <span>{post.date}</span>
+                    <span>·</span>
+                    <span>{post.readTime}</span>
+                  </div>
+                  <Link
+                    href={`/blog/${post.slug}`}
+                    className="flex items-center gap-1.5 text-[13px] font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+                  >
+                    Read
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
+              </div>
+            </article>
           ))}
+        </div>
+
+        {/* Industry guides CTA */}
+        <div className="mt-20 bg-gradient-to-b from-slate-50 to-white rounded-3xl border border-gray-100 p-10 sm:p-14">
+          <h2 className="font-display text-2xl font-extrabold text-gray-900 mb-4">Industry-specific guides</h2>
+          <p className="text-gray-500 mb-6">Booking guides built for your specific business type.</p>
+          <div className="flex flex-wrap gap-3">
+            {[
+              { label: 'Hair Salons', href: '/for/salons' },
+              { label: 'Clinics', href: '/for/clinics' },
+              { label: 'Barbershops', href: '/for/barbershops' },
+              { label: 'Personal Trainers', href: '/for/personal-trainers' },
+              { label: 'Yoga Studios', href: '/for/yoga-studios' },
+              { label: 'Aesthetics', href: '/for/aesthetics' },
+              { label: 'Physiotherapy', href: '/for/physiotherapy' },
+              { label: 'Consultants', href: '/for/consultants' },
+            ].map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="px-4 py-2 rounded-xl border border-gray-200 text-[14px] font-medium text-gray-600 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 transition-all"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
         </div>
       </div>
     </div>

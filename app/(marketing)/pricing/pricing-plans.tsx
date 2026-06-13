@@ -14,7 +14,7 @@ const plans = [
     annualBilled: 276,
     description: 'Everything you need to start taking online bookings.',
     cta: 'Start free trial',
-    ctaHref: 'https://app.inboker.com/signup',
+    ctaHref: '/signup',
     popular: false,
     features: [
       '1 staff member',
@@ -33,7 +33,7 @@ const plans = [
     annualBilled: 660,
     description: 'Automation and team tools for growing practices.',
     cta: 'Start free trial',
-    ctaHref: 'https://app.inboker.com/signup',
+    ctaHref: '/signup',
     popular: true,
     features: [
       'Up to 5 staff members',
