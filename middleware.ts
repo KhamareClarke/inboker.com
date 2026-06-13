@@ -16,6 +16,13 @@ export async function middleware(req: NextRequest) {
   }
 
   const res = NextResponse.next();
+
+  // If Supabase env vars are not configured, skip auth checks entirely
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    console.warn('Middleware: Supabase env vars not set, skipping auth checks');
+    return res;
+  }
+
   const supabaseUrl =
     normalizeSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL) ??
     process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -29,7 +36,7 @@ export async function middleware(req: NextRequest) {
 
   // Check for session
   let session = null;
-  
+
   try {
     const sessionData = await supabase.auth.getSession();
     session = sessionData.data?.session;
