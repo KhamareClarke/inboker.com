@@ -6,6 +6,7 @@ import { createClient } from '@supabase/supabase-js';
 import { checkWorkspaceBookingOverlap } from '@/lib/booking/overlap-checker';
 import { isWorkspaceProviderAvailable } from '@/lib/booking/availability-checker';
 import { StaffNotAvailableError, WorkspaceBookingConflictError } from '@/lib/booking/booking-errors';
+import { emitFleetIngest } from '@/lib/fleet-ingest';
 
 // Get Supabase client (create if needed for server actions)
 const getSupabaseClient = () => {
@@ -132,6 +133,18 @@ export async function createBooking(data: {
     .single();
 
   if (error) throw error;
+
+  void emitFleetIngest({
+    event_type: 'booking',
+    summary: `New booking: ${data.title} (${data.start_time})`,
+    payload: {
+      booking_id: booking.id,
+      workspace_id: data.workspace_id,
+      client_id: data.client_id,
+      title: data.title,
+      start_time: data.start_time,
+    },
+  });
 
   await client
     .from('client_activities')

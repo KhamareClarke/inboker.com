@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { applyPublicMutationGuards } from '@/lib/security/api-guards';
+import { emitFleetIngest } from '@/lib/fleet-ingest';
 
 export async function POST(request: NextRequest) {
   const blocked = applyPublicMutationGuards(request, 'lead_form', 20, 60 * 60 * 1000);
@@ -17,6 +18,12 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('Lead submitted:', { name, email, businessType });
+
+    void emitFleetIngest({
+      event_type: 'lead',
+      summary: `Marketing lead: ${name} (${email})`,
+      payload: { name, email, businessType },
+    });
 
     return NextResponse.json({ ok: true, message: 'Thank you! Check your email for the templates.' });
   } catch (error: any) {
