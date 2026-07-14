@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = result;
 
     if (error) {
-      void emitEmpireActivity({
+      await emitEmpireActivity({
         event_type: 'signin_failed',
         user_email: email,
         message: 'Invalid email or password',
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!data.session) {
-      void emitEmpireActivity({
+      await emitEmpireActivity({
         event_type: 'signin_failed',
         user_email: email,
         message: 'No session created',
@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (profile?.suspended) {
-      void emitEmpireActivity({
+      await emitEmpireActivity({
         event_type: 'signin_failed',
         user_email: data.user.email,
         user_id: data.user.id,
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    void emitEmpireActivity({
+    await emitEmpireActivity({
       event_type: 'signin',
       user_email: data.user.email,
       user_id: data.user.id,

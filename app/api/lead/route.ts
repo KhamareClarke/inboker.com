@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
 
     console.log('Lead submitted:', { name, email, businessType });
 
-    void emitFleetIngest({
+    await emitFleetIngest({
       event_type: 'lead',
       summary: `Marketing lead: ${name} (${email})`,
       payload: { name, email, businessType },

@@ -80,46 +80,55 @@ export async function emitEmpireActivity(input: EmpireActivityInput): Promise<vo
   try {
     const url = hubUrl();
     const secret = process.env.EMPIRE_INGEST_SECRET;
-    if (!url || !secret) return;
 
-    const body = {
-      project_id: PROJECT_ID,
-      event_type: input.event_type,
-      status: input.status || (input.event_type.endsWith('_failed') ? 'failed' : 'ok'),
-      user_email: input.user_email ?? null,
-      user_id: input.user_id ?? null,
-      user_name: input.user_name ?? null,
-      source: input.source || 'web',
-      message: input.message,
-      metadata: input.metadata || {},
-      ip: clientIp(input.request),
-      user_agent: input.request?.headers.get('user-agent') || null,
-    };
+    if (url && secret) {
+      const body = {
+        project_id: PROJECT_ID,
+        event_type: input.event_type,
+        status: input.status || (input.event_type.endsWith('_failed') ? 'failed' : 'ok'),
+        user_email: input.user_email ?? null,
+        user_id: input.user_id ?? null,
+        user_name: input.user_name ?? null,
+        source: input.source || 'web',
+        message: input.message,
+        metadata: input.metadata || {},
+        ip: clientIp(input.request),
+        user_agent: input.request?.headers.get('user-agent') || null,
+      };
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 4000);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+      try {
+        await fetchPreservingAuth(`${url}/api/empire/activity/ingest`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${secret}`,
+          },
+          body: JSON.stringify(body),
+          signal: controller.signal,
+          cache: 'no-store',
+        });
+      } catch {
+        // hub activity is best-effort
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
 
-    await fetchPreservingAuth(`${url}/api/empire/activity/ingest`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${secret}`,
-      },
-      body: JSON.stringify(body),
-      signal: controller.signal,
-      cache: 'no-store',
-    }).catch(() => undefined);
-
-    clearTimeout(timeout);
-
+    // Always notify Jarvis fleet (FLEET_INGEST_* or EMPIRE_INGEST_* fallback).
     const { emitFleetIngest } = await import('./fleet-ingest');
     const fleetType =
-      input.event_type === 'payment_succeeded'
+      input.event_type === 'payment_succeeded' || input.event_type === 'subscription_created'
         ? 'order'
         : input.event_type === 'lead_created'
           ? 'lead'
-          : input.event_type;
-    void emitFleetIngest({
+          : input.event_type === 'signup' || input.event_type === 'signup_failed'
+            ? 'signup'
+            : input.event_type === 'signin' || input.event_type === 'signin_failed'
+              ? 'signin'
+              : input.event_type;
+    await emitFleetIngest({
       event_type: fleetType,
       summary: input.message || `${input.event_type}: ${input.user_email || PROJECT_ID}`,
       payload: {

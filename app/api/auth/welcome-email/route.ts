@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
       null
     );
 
-    void emitEmpireActivity({
+    await emitEmpireActivity({
       event_type: 'signup',
       user_email: user.email,
       user_id: user.id,

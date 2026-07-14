@@ -145,7 +145,7 @@ export async function POST(req: NextRequest) {
               .select('email, full_name')
               .eq('id', userId)
               .single();
-            void emitEmpireActivity({
+            await emitEmpireActivity({
               event_type: 'subscription_created',
               user_email: u?.email || session.customer_details?.email || null,
               user_id: userId,
@@ -257,7 +257,7 @@ export async function POST(req: NextRequest) {
             .select('email, full_name')
             .eq('id', userId)
             .single();
-          void emitEmpireActivity({
+          await emitEmpireActivity({
             event_type: 'subscription_cancelled',
             user_email: u?.email || null,
             user_id: userId,
@@ -341,7 +341,7 @@ export async function POST(req: NextRequest) {
               .select('email, full_name')
               .eq('id', userId)
               .single();
-            void emitEmpireActivity({
+            await emitEmpireActivity({
               event_type: 'payment_succeeded',
               user_email: u?.email || null,
               user_id: userId,
